@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// The Models (Our Database Tables)
+// ==========================================
+
+model Podcast {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  author        String?
+  websiteUrl    String?   // The podcast's homepage
+  feedUrl       String    @unique // The RSS feed URL (must be unique)
+  imageUrl      String?   // Cover art URL
+  language      String?   // Usually 'hu'
+  lastBuildDate DateTime? // When the feed says it was last updated
+
+  // Platform Logic
+  isFeatured Boolean @default(false)
+  isActive   Boolean @default(true)
+
+  // System / Maintenance timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastCheckedAt DateTime? // When OUR system last checked the feed
+
+  // Relationship: One podcast has many episodes
+  episodes Episode[]
+}
+
+model Episode {
+  id String @id @default(cuid())
+
+  // Link back to the Podcast table
+  podcastId String
+  podcast   Podcast @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+
+  guid String // Unique ID from the RSS feed itself
+
+  title         String
+  description   String?
+  pubDate       DateTime // When the episode was released
+  enclosureUrl  String // The actual audio file URL (mp3)
+  duration      Int? // In seconds
+  episodeNumber Int?
+  imageUrl      String? // Episode specific artwork
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Ensure we don't import the same episode twice for the same podcast
+  @@unique([podcastId, guid])
+  // Index for faster sorting by releases date
+  @@index([pubDate])
+}
