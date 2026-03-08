@@ -9,12 +9,19 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  // Fetch all podcasts, sorted by title
-  // CRITICAL CHANGE: Select 'category' as well
+  // 1. Fetch all podcasts, sorted by title
   const allPodcasts = await prisma.podcast.findMany({
     orderBy: { title: 'asc' },
     select: { id: true, title: true, category: true },
   });
 
-  return <AdminClientPage podcasts={allPodcasts} />;
+  // 2. Fetch all categories, sorted by their order
+  // NOTE: If your Prisma model is named something else (like 'podcastCategory'), change 'category' below.
+  const allCategories = await prisma.category.findMany({
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true, name: true, sortOrder: true },
+  });
+
+  // 3. Pass BOTH to the client page
+  return <AdminClientPage podcasts={allPodcasts} dbCategories={allCategories} />;
 }
