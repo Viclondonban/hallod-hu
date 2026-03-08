@@ -30,6 +30,9 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     feedUrl = body.url;
+    // <-- NEW: Get the category and banner URL
+    const category = body.category;
+    
 
     if (!feedUrl || typeof feedUrl !== 'string' || !feedUrl.startsWith('http')) {
       return NextResponse.json({ error: 'Invalid RSS URL provided.' }, { status: 400 });
@@ -62,6 +65,9 @@ export async function POST(request: Request) {
         imageUrl: feed.image?.url || feed.itunes?.image,
         language: feed.language || 'hu',
         lastCheckedAt: new Date(),
+        // <-- NEW: Update the category and banner image
+        category: category || undefined, // Only update if provided
+       
       },
       create: {
         feedUrl: feedUrl,
@@ -72,6 +78,9 @@ export async function POST(request: Request) {
         imageUrl: feed.image?.url || feed.itunes?.image,
         language: feed.language || 'hu',
         lastCheckedAt: new Date(),
+        // <-- NEW: Create with the category and banner image
+        category: category || 'Egyéb', // Default to 'Egyéb'
+       
       }
     });
 

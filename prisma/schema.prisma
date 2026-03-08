@@ -27,6 +27,8 @@ model Podcast {
 
   // Platform Logic
   isFeatured Boolean @default(false)
+  bannerImageUrl String?  // <-- NEW: URL for the wide homepage banner
+  category       String?  // <-- NEW: e.g., "News", "Tech", "Culture"
   isActive   Boolean @default(true)
 
   // System / Maintenance timestamps
