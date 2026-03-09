@@ -7,7 +7,7 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600; // Caches the page for 1 hour (3600 seconds)
 
 export default async function Home() {
   // 1. Fetch the Featured Podcast
@@ -22,7 +22,7 @@ export default async function Home() {
 
   // 3. Fetch ALL active podcasts AND their latest episode date
   const rawPodcasts = await prisma.podcast.findMany({
-    where: {},
+    where: { isActive: true }, 
     select: {
       id: true,
       title: true,

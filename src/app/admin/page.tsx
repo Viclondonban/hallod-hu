@@ -1,4 +1,3 @@
-// src/app/admin/page.tsx
 import { PrismaClient } from '@prisma/client';
 import AdminClientPage from './client-page';
 
@@ -9,19 +8,17 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  // 1. Fetch all podcasts, sorted by title
-  const allPodcasts = await prisma.podcast.findMany({
-    orderBy: { title: 'asc' },
+  // 1. Fetch podcasts for the dropdowns
+  const podcasts = await prisma.podcast.findMany({
     select: { id: true, title: true, category: true },
+    orderBy: { title: 'asc' }
   });
 
-  // 2. Fetch all categories, sorted by their order
-  // NOTE: If your Prisma model is named something else (like 'podcastCategory'), change 'category' below.
-  const allCategories = await prisma.category.findMany({
-    orderBy: { sortOrder: 'asc' },
-    select: { id: true, name: true, sortOrder: true },
+  // 2. Fetch categories for the reordering tool
+  const dbCategories = await prisma.category.findMany({
+    orderBy: { sortOrder: 'asc' }
   });
 
-  // 3. Pass BOTH to the client page
-  return <AdminClientPage podcasts={allPodcasts} dbCategories={allCategories} />;
+  // 3. Pass them to your Client Page
+  return <AdminClientPage podcasts={podcasts} dbCategories={dbCategories} />;
 }
