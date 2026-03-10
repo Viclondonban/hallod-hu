@@ -1,39 +1,34 @@
 import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 // Initialize Prisma Client to talk to the database
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// This is a dynamic page. Next.js automatically gives us the ID from the URL.
-// CRITICAL CHANGE: In Next.js 15+, params is a Promise that must be awaited.
-export default async function PodcastDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  // Wait for the params to be resolved so we can get the ID
-  const { id } = await params;
-  const podcastId = id;
+// 🚀 Performance Upgrade: Cache this page for 1 hour to make it lightning fast!
+export const revalidate = 3600;
 
-  console.log(`Fetching details for podcast ID: ${podcastId}...`);
+export default async function PodcastDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  // Grab the slug from the URL (e.g. "viclondonban")
+  const { slug } = await params;
 
-  // 1. Fetch the Podcast details
+  console.log(`Fetching details for podcast slug: ${slug}...`);
+
+  // 1. Fetch the Podcast details using the SLUG
   const podcast = await prisma.podcast.findUnique({
-    where: { id: podcastId },
+    where: { slug: slug },
   });
 
-  // If the podcast doesn't exist, show a 404 error
+  // If the podcast doesn't exist, instantly trigger a 404 page so other routes work normally
   if (!podcast) {
-    return (
-      <main className="min-h-screen p-8 bg-gray-100 text-center flex flex-col items-center justify-center">
-        <h1 className="text-3xl font-bold text-red-600 mb-4">Podcast Not Found</h1>
-        <p className="text-gray-600 mb-8">Sorry, we couldn't find a podcast with ID: {podcastId}</p>
-        <Link href="/" className="text-blue-600 hover:underline">← Back to Homepage</Link>
-      </main>
-    );
+    notFound(); 
   }
 
   // 2. Fetch all episodes for this podcast, sorted by newest
   const episodes = await prisma.episode.findMany({
-    where: { podcastId: podcastId },
+    where: { podcastId: podcast.id }, // We still use the internal ID to find its episodes!
     orderBy: { pubDate: 'desc' },
   });
 

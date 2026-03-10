@@ -17,25 +17,27 @@ datasource db {
 
 model Podcast {
   id            String    @id @default(cuid())
+  slug          String?   @unique   
+  
   title         String
   description   String?
   author        String?
-  websiteUrl    String?   // The podcast's homepage
-  feedUrl       String    @unique // The RSS feed URL (must be unique)
-  imageUrl      String?   // Cover art URL
-  language      String?   // Usually 'hu'
-  lastBuildDate DateTime? // When the feed says it was last updated
+  websiteUrl    String?   
+  feedUrl       String    @unique 
+  imageUrl      String?   
+  language      String?   
+  lastBuildDate DateTime? 
 
   // Platform Logic
   isFeatured Boolean @default(false)
-  bannerImageUrl String?  // <-- NEW: URL for the wide homepage banner
-  category       String?  // <-- NEW: e.g., "News", "Tech", "Culture"
+  bannerImageUrl String?  
+  category       String?  
   isActive   Boolean @default(true)
 
   // System / Maintenance timestamps
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  lastCheckedAt DateTime? // When OUR system last checked the feed
+  lastCheckedAt DateTime? 
 
   // Relationship: One podcast has many episodes
   episodes Episode[]
@@ -48,26 +50,24 @@ model Episode {
   podcastId String
   podcast   Podcast @relation(fields: [podcastId], references: [id], onDelete: Cascade)
 
-  guid String // Unique ID from the RSS feed itself
+  guid String 
 
   title         String
   description   String?
-  pubDate       DateTime // When the episode was released
-  enclosureUrl  String // The actual audio file URL (mp3)
-  duration      Int? // In seconds
+  pubDate       DateTime 
+  enclosureUrl  String 
+  duration      Int? 
   episodeNumber Int?
-  imageUrl      String? // Episode specific artwork
+  imageUrl      String? 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Ensure we don't import the same episode twice for the same podcast
   @@unique([podcastId, guid])
-
-  // Index for faster sorting by releases date
   @@index([pubDate])
+}
 
-}model Category {
+model Category {
   id        String   @id @default(cuid())
   name      String   @unique
   sortOrder Int      @default(0)

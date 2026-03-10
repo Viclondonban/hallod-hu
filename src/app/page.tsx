@@ -25,6 +25,7 @@ export default async function Home() {
     where: { isActive: true }, 
     select: {
       id: true,
+      slug: true, // <--- ADDED: Tells the database to grab the beautiful URLs!
       title: true,
       author: true,
       imageUrl: true,
@@ -66,7 +67,8 @@ export default async function Home() {
         
         {featuredPodcast && featuredPodcast.bannerImageUrl && (
           <section>
-            <Link href={`/podcast/${featuredPodcast.id}`} className="block group relative rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            {/* UPDATED: The banner now uses the new slug routing too! */}
+            <Link href={`/${featuredPodcast.slug}`} className="block group relative rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="aspect-[21/9] md:aspect-[3/1] relative bg-gray-200">
                 <img
                   src={featuredPodcast.bannerImageUrl}

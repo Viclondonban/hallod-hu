@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 
 type Podcast = {
   id: string;
+  slug: string | null; // <-- ADDED THIS!
   title: string;
   author: string | null;
   imageUrl: string | null;
@@ -115,7 +116,7 @@ export default function PodcastList({ podcasts, featuredPodcastId, dbCategories 
             
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-6">
               {displayPodcasts.map((podcast) => (
-                <Link key={podcast.id} href={`/podcast/${podcast.id}`} className="group flex flex-col gap-2">
+                <Link key={podcast.id} href={`/${podcast.slug}`} className="group flex flex-col gap-2"> {/* <-- UPDATED LINK */}
                   <div className="aspect-square w-full relative rounded-lg sm:rounded-xl overflow-hidden bg-gray-200 shadow-sm transition-transform group-hover:scale-[1.03] group-hover:shadow-md">
                     {podcast.imageUrl ? (
                       <img 
@@ -175,7 +176,7 @@ export default function PodcastList({ podcasts, featuredPodcastId, dbCategories 
             </div>
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-6">
               {displayOrphans.map((podcast) => (
-                <Link key={podcast.id} href={`/podcast/${podcast.id}`} className="group flex flex-col gap-2">
+                <Link key={podcast.id} href={`/${podcast.slug}`} className="group flex flex-col gap-2"> {/* <-- UPDATED LINK */}
                   <div className="aspect-square w-full relative rounded-lg sm:rounded-xl overflow-hidden bg-gray-200 shadow-sm transition-transform group-hover:scale-[1.03]">
                     {podcast.imageUrl ? (
                       <img 
