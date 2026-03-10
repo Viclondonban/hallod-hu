@@ -58,18 +58,17 @@ export default function PodcastList({ podcasts, featuredPodcastId, dbCategories 
   return (
     <div className="space-y-12">
       
-      {/* 🔍 SEARCH BAR */}
-      <div className="relative max-w-xl mx-auto mb-12">
+      {/* SEARCH BAR */}
+      <div className="relative max-w-xl mx-auto my-8">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <span className="text-gray-500 sm:text-lg">🔍</span>
         </div>
         <input
           type="text"
           placeholder="Keresés cím vagy készítő alapján..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-base shadow-sm transition-shadow hover:shadow-md"
-        />
+          className="w-full px-6 py-3 bg-white border border-gray-200 rounded-full shadow-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all text-gray-700 placeholder-gray-400"
+/>
         {searchTerm && (
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
             <button 

@@ -72,3 +72,9 @@ model Category {
   name      String   @unique
   sortOrder Int      @default(0)
 }
+model Suggestion {
+  id        String   @id @default(cuid())
+  content   String   
+  ipAddress String?  @default("unknown")
+  createdAt DateTime @default(now())
+}

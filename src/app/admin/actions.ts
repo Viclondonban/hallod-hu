@@ -2,7 +2,9 @@
 
 import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers'; // <--- ADD THIS IMPORT
 
+// Initialize Prisma Client
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
@@ -22,7 +24,41 @@ export async function togglePodcastStatus(id: string, currentStatus: boolean) {
     data: { isActive: !currentStatus },
   });
 
-  // Force the live website to instantly update
   revalidatePath('/');
+  revalidatePath('/admin');
+}
+
+// 3. Submit a new suggestion from the footer
+export async function submitSuggestion(formData: FormData) {
+  const content = formData.get("suggestion") as string;
+  
+  if (!content || content.trim() === "") return { error: "Üres mező!" };
+  if (content.length > 500) return { error: "Túl hosszú! (Max 500 karakter)" };
+
+  // Get IP for rate limiting
+  const headerList = await headers();
+  const ip = headerList.get("x-forwarded-for") || "unknown";
+
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const dailyCount = await prisma.suggestion.count({
+    where: {
+      ipAddress: ip,
+      createdAt: { gte: twentyFourHoursAgo }
+    }
+  });
+
+  if (dailyCount >= 5) return { error: "Napi limit elérve!" };
+
+  await prisma.suggestion.create({
+    data: { content: content.trim(), ipAddress: ip }
+  });
+  
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// 4. Delete a suggestion forever
+export async function deleteSuggestion(id: string) {
+  await prisma.suggestion.delete({ where: { id } });
   revalidatePath('/admin');
 }
