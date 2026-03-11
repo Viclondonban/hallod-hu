@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         lastCheckedAt: new Date(),
         // <-- NEW: Update the category and banner image
         category: category || undefined, // Only update if provided
-       
+        
       },
       create: {
         feedUrl: feedUrl,
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
         lastCheckedAt: new Date(),
         // <-- NEW: Create with the category and banner image
         category: category || 'Egyéb', // Default to 'Egyéb'
-       
+        
       }
     });
 
@@ -160,14 +160,10 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('[API] Critical Error during ingestion:', error);
-    // Mark the podcast as having an error if possible
+    
+    // ✨ FIX: Disabled 'lastError' db update because the column does not exist yet.
     if (feedUrl) {
-       try {
-         await prisma.podcast.update({
-             where: { feedUrl: feedUrl },
-             data: { lastError: (error as Error).message }
-         });
-       } catch (dbError) { /* Ignore update error if podcast doesn't exist yet */ }
+       console.error(`Failed to process feed: ${feedUrl}`);
     }
 
     return NextResponse.json(
