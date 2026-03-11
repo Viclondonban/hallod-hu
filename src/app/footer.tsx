@@ -38,7 +38,7 @@ export default function Footer() {
           {/* Left Side: Submission Form */}
           <div className="space-y-4">
             <h3 className="text-base sm:text-lg font-semibold text-gray-800 tracking-tight">
-              Podcast csatornát ajánlanál? Fúdejóvagy! Ide vele:
+              Podcast csatornát ajánlanál? Fúdejóvagy!
             </h3>
             <form onSubmit={handleSuggest} className="flex gap-2 max-w-md">
               
@@ -71,8 +71,7 @@ export default function Footer() {
           {/* Right Side: Disclaimer & Credits */}
           <div className="space-y-3 md:text-right text-sm">
             <p className="text-gray-500 leading-relaxed">
-              Az oldal még nagyon friss, szóval tessék türelmesnek lenni és nem bunkózni. 
-              Ha valami javaslat lenne, email-ben jöhet, kedvesen: <a href="mailto:viclondonban@gmail.com" className="text-blue-500 font-medium hover:text-blue-600 transition-colors">viclondonban@gmail.com</a>
+              Az oldal még nagyon friss, szóval tessék türelmesnek lenni és nem bunkózni. Ha valami javaslat lenne, email-ben jöhet, kedvesen: <a href="mailto:viclondonban@gmail.com" className="text-blue-500 font-medium hover:text-blue-600 transition-colors">viclondonban@gmail.com</a>
             </p>
             <p className="font-medium text-gray-400 text-xs">
               Építette és üzemelteti: a csodálatos Nyics Viktor :-)

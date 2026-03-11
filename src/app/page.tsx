@@ -60,9 +60,7 @@ export default async function Home() {
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight text-blue-600">hallod.hu</h1>
-          <Link href="/admin" className="text-gray-400 hover:text-blue-600 text-xs font-medium transition-colors">
-            Admin Panel →
-          </Link>
+        
         </div>
       </header>
 

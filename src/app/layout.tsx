@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Footer from "./footer"; // <--- 1. Imported your awesome new footer!
+import Footer from "./footer"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +26,11 @@ export default function RootLayout({
 }>) {
  return (
     <html lang="hu">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
+      {/* ✨ ADDED suppressHydrationWarning HERE */}
+      <body 
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
+        suppressHydrationWarning
+      >
         <div className="flex-grow">
           {children}
         </div>

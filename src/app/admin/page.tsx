@@ -1,7 +1,11 @@
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { PrismaClient } from '@prisma/client';
 import AdminClientPage from './client-page';
 import { deleteSuggestion } from './actions';
 
+// Initialize Prisma
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
@@ -9,6 +13,40 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
+  // 🛡️ THE MODERN BOUNCER
+  const cookieStore = await cookies(); // Next.js requires awaiting cookies now!
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Server Components can't set cookies, so we ignore this error securely
+          }
+        },
+      },
+    }
+  );
+
+  const { data: { session } } = await supabase.auth.getSession();
+
+  // 📋 THE VIP LIST
+  const allowedEmails = ['viclondonban@gmail.com', 'viktor@vixt.co'];
+
+  // If no session, or the email is NOT on the VIP list, kick them out
+  if (!session || !allowedEmails.includes(session.user?.email || '')) {
+    redirect('/'); 
+  }
+
   // 1. Fetch data for the existing dashboard
   const podcasts = await prisma.podcast.findMany({
     select: { id: true, title: true, category: true },
@@ -36,7 +74,7 @@ export default async function AdminPage() {
         {/* Visual Divider */}
         <div className="max-w-5xl mx-auto border-t border-gray-200 my-16"></div>
 
-        {/* 📥 SUGGESTION INBOX (Clean & Modern at the bottom) */}
+        {/* 📥 SUGGESTION INBOX */}
         <section className="max-w-5xl mx-auto mb-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800 flex items-center">
