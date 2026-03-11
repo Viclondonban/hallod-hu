@@ -1,40 +1,43 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import Footer from "./footer"; 
+import Script from "next/script"; // Import the Next.js Script component
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// Updated the metadata so it doesn't say "Create Next App" on Google!
+// SEO and Favicon Metadata
 export const metadata: Metadata = {
-  title: "hallod.hu - A független magyar podcast tár",
-  description: "Podcast csatornát ajánlanál? Fúdejóvagy! Gyere és böngéssz a legjobb magyar podcastok között.",
+  title: "Hallod - A Magyar Podcast Gyűjtő",
+  description: "Az összes magyar nyelvű podcast egy helyen.",
+  icons: {
+    icon: "/favicon.png", 
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
- return (
+}) {
+  return (
     <html lang="hu">
-      {/* ✨ ADDED suppressHydrationWarning HERE */}
-      <body 
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
-        suppressHydrationWarning
-      >
-        <div className="flex-grow">
-          {children}
-        </div>
-        <Footer />
+      <body className={inter.className}>
+        {children}
+
+        {/* --- GOOGLE ANALYTICS (GA4) --- */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-C75922RTW0"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-C75922RTW0');
+          `}
+        </Script>
       </body>
     </html>
   );
