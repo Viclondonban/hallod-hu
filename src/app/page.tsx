@@ -8,7 +8,7 @@ const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // ⚡ SET TO 0 TO FORCE INSTANT UPDATES. Change to 3600 later for performance.
-export const revalidate = 0; 
+export const revalidate = 60; 
 
 export default async function Home() {
   // 1. Fetch the Featured Podcast 
