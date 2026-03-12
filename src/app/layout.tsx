@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Script from "next/script"; // Import the Next.js Script component
+import Script from "next/script";
+import Footer from "./footer"; // Assuming footer.tsx is in src/app/
+// If you have a Header or Banner component, import it here too:
+// import Banner from "./banner"; 
 
 const inter = Inter({ subsets: ["latin"] });
 
-// SEO and Favicon Metadata
 export const metadata: Metadata = {
   title: "Hallod - A Magyar Podcast Gyűjtő",
   description: "Az összes magyar nyelvű podcast egy helyen.",
@@ -22,7 +24,13 @@ export default function RootLayout({
   return (
     <html lang="hu">
       <body className={inter.className}>
-        {children}
+        {/* If you have a global Header/Banner, place it here */}
+        
+        <main className="min-h-screen">
+          {children}
+        </main>
+
+        <Footer /> 
 
         {/* --- GOOGLE ANALYTICS (GA4) --- */}
         <Script
@@ -34,7 +42,6 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-
             gtag('config', 'G-C75922RTW0');
           `}
         </Script>
