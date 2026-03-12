@@ -11,9 +11,6 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Hallod - A Magyar Podcast Gyűjtő",
   description: "Az összes magyar nyelvű podcast egy helyen.",
-  icons: {
-    icon: "/favicon.png", 
-  },
 };
 
 export default function RootLayout({
