@@ -9,13 +9,13 @@ import Footer from "./footer"; // Assuming footer.tsx is in src/app/
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Hallod - Podcast a füledbe",
+  title: "hallod.hu - A Magyar Podcast Gyűjtő",
   description: "Az összes magyar nyelvű podcast egy helyen.",
   metadataBase: new URL('https://hallod.hu'), // Required for relative image paths
   
   // OpenGraph (Facebook, LinkedIn, Slack)
   openGraph: {
-    title: "Hallod - Podcast a füledbe",
+    title: "hallod.hu - A Magyar Podcast Gyűjtő",
     description: "Az összes magyar nyelvű podcast egy helyen.",
     url: "https://hallod.hu",
     siteName: "Hallod.hu",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
         url: "/metacover.png", 
         width: 1200,
         height: 630,
-        alt: "Hallod - Podcast a füledbe",
+        alt: "hallod.hu - A Magyar Podcast Gyűjtő",
       },
     ],
     locale: "hu_HU",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   // Twitter / X
   twitter: {
     card: "summary_large_image",
-    title: "Hallod - Podcast a füledbe",
+    title: "Hallod.hu - A Magyar Podcast Gyűjtő",
     description: "Az összes magyar nyelvű podcast egy helyen.",
     images: ["/metacover.png"], 
   },
