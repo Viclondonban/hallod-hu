@@ -3,8 +3,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import ShareButton from './share-button';
 import EpisodePlayer from './episode-player';
+import EpisodeScroller from './episode-scroller';
 
 // Initialize Prisma Client to talk to the database
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
@@ -15,15 +17,49 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 export const revalidate = 60;
 
 export async function generateMetadata(
-  { params }: { params: Promise<{ slug: string }> }
+  { params, searchParams }: {
+    params: Promise<{ slug: string }>;
+    searchParams: Promise<{ ep?: string }>;
+  }
 ): Promise<Metadata> {
   const { slug } = await params;
+  const { ep } = await searchParams;
+
   const podcast = await prisma.podcast.findUnique({ where: { slug } });
   if (!podcast) return {};
 
+  // Episode-specific OG tags when ?ep= is present
+  if (ep) {
+    const episode = await prisma.episode.findUnique({ where: { id: ep } });
+    if (episode) {
+      const image = episode.imageUrl || podcast.imageUrl;
+      const description = episode.description?.slice(0, 200) || '';
+      const url = `https://www.hallod.hu/${slug}?ep=${ep}`;
+      return {
+        title: `${episode.title} – ${podcast.title} | hallod.hu`,
+        description,
+        openGraph: {
+          title: episode.title,
+          description,
+          url,
+          siteName: 'hallod.hu – A Magyar Podcast Gyűjtő',
+          ...(image && { images: [{ url: image, width: 1400, height: 1400, alt: episode.title }] }),
+          type: 'website',
+          locale: 'hu_HU',
+        },
+        twitter: {
+          card: 'summary_large_image',
+          title: episode.title,
+          description,
+          ...(image && { images: [image] }),
+        },
+      };
+    }
+  }
+
+  // Default: podcast-level OG tags
   const description = podcast.description?.slice(0, 200) || 'Magyar podcast csatorna a hallod.hu-n';
   const url = `https://www.hallod.hu/${slug}`;
-
   return {
     title: `${podcast.title} – hallod.hu`,
     description,
@@ -136,6 +172,11 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
+        {/* Scroll to episode when ?ep= is in the URL */}
+        <Suspense fallback={null}>
+          <EpisodeScroller />
+        </Suspense>
+
         {/* Episode List */}
         <h2 className="text-2xl font-bold text-gray-900 mb-6">All Episodes ({episodes.length})</h2>
         <div className="bg-white rounded-lg shadow-sm divide-y divide-gray-200">
@@ -147,7 +188,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
           {episodes.map((episode) => {
             const coverImage = episode.imageUrl || podcast.imageUrl;
             return (
-              <div key={episode.id} className="p-5 hover:bg-gray-50 transition-colors group">
+              <div key={episode.id} id={`ep-${episode.id}`} className="p-5 hover:bg-gray-50 transition-colors group">
                 <div className="flex gap-4">
                   {/* Episode thumbnail */}
                   <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-200 shadow-sm">

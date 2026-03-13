@@ -25,7 +25,7 @@ export default function ShareButton({ episode, podcast }: ShareButtonProps) {
     setCanNativeShare(typeof navigator !== 'undefined' && !!navigator.share);
   }, []);
 
-  const shareUrl = `https://www.hallod.hu/${podcast.slug ?? ''}`;
+  const shareUrl = `https://www.hallod.hu/${podcast.slug ?? ''}?ep=${episode.id}`;
   const coverImage = episode.imageUrl || podcast.imageUrl;
 
   const handleCopy = useCallback(async () => {
