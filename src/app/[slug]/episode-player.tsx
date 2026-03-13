@@ -6,12 +6,12 @@ interface EpisodePlayerProps {
 
 export default function EpisodePlayer({ src }: EpisodePlayerProps) {
   return (
-    <div className="flex-1 min-w-0">
+    <div className="flex-1">
       <audio
         controls
         src={src}
         preload="none"
-        className="w-full h-9 focus:outline-none"
+        className="w-full"
       />
     </div>
   );
