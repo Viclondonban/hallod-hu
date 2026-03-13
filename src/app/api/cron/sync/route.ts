@@ -6,14 +6,19 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// 5 second timeout per feed — slow feeds fail fast rather than blocking the run
+// 5 second timeout per feed
 const parser = new Parser({ timeout: 5000 });
 
-// How many podcasts to process per cron run (fetched in parallel)
-const BATCH_SIZE = 5;
+// 3 parallel podcasts keeps well within Vercel Hobby's 10s limit
+const BATCH_SIZE = 3;
+
+// Only check the N most recent items from each feed.
+// Running every 15 min means at most 1-2 new episodes exist — no need to
+// scan the full back-catalogue on every run.
+const MAX_ITEMS_PER_FEED = 20;
 
 const MIN_CHECK_HOURS = 12;
-const MAX_CHECK_HOURS = 24 * 30; // 30 days
+const MAX_CHECK_HOURS = 24 * 30;
 
 async function calculateNextCheckHours(podcastId: string): Promise<number> {
   const recentEpisodes = await prisma.episode.findMany({
@@ -38,34 +43,34 @@ async function calculateNextCheckHours(podcastId: string): Promise<number> {
   return Math.min(Math.max(avgHours * 0.8, MIN_CHECK_HOURS), MAX_CHECK_HOURS);
 }
 
-// Processes a single podcast: fetch feed + write new episodes to DB
 async function syncPodcast(podcast: { id: string; title: string; feedUrl: string }) {
   const feed = await parser.parseURL(podcast.feedUrl);
   let newEpisodes = 0;
 
-  for (const item of feed.items) {
+  // Only look at the most recent items — older ones are already in the DB
+  const recentItems = feed.items.slice(0, MAX_ITEMS_PER_FEED);
+
+  for (const item of recentItems) {
     const audioUrl = item.enclosure?.url || item.link;
     const guid = item.guid || audioUrl;
     if (!audioUrl || !item.title || !guid) continue;
 
-    const existing = await prisma.episode.findFirst({
-      where: {
+    // Single upsert instead of findFirst + create — half the DB roundtrips
+    const result = await prisma.episode.upsert({
+      where: { podcastId_guid: { podcastId: podcast.id, guid } },
+      update: {},
+      create: {
+        guid,
+        title: item.title,
+        enclosureUrl: audioUrl,
+        pubDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+        description: item.contentSnippet || item.content || '',
         podcastId: podcast.id,
-        OR: [{ enclosureUrl: audioUrl }, { guid }],
       },
     });
 
-    if (!existing) {
-      await prisma.episode.create({
-        data: {
-          guid,
-          title: item.title,
-          enclosureUrl: audioUrl,
-          pubDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-          description: item.contentSnippet || item.content || '',
-          podcastId: podcast.id,
-        },
-      });
+    // createdAt === updatedAt means it was just created
+    if (result.createdAt.getTime() === result.updatedAt.getTime()) {
       newEpisodes++;
     }
   }
@@ -118,7 +123,6 @@ export async function GET(req: NextRequest) {
             : String(result.reason);
           console.error(`Error syncing ${podcast.title}:`, result.reason);
 
-          // Push back 6 hours so a broken feed doesn't hog every run
           await prisma.podcast.update({
             where: { id: podcast.id },
             data: { lastError: errorMsg, nextCheckAt: new Date(Date.now() + 6 * 60 * 60 * 1000) },
