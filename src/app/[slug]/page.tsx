@@ -34,13 +34,25 @@ export async function generateMetadata(
   const podcast = await prisma.podcast.findUnique({ where: { slug } });
   if (!podcast) return {};
 
+  const BASE = 'https://www.hallod.hu';
+
+  // Helper: build the styled OG image URL
+  function ogImageUrl(title: string, podcastTitle: string, image: string | null | undefined): string {
+    const u = new URL('/api/og', BASE);
+    u.searchParams.set('title', title);
+    u.searchParams.set('podcast', podcastTitle);
+    if (image) u.searchParams.set('image', image);
+    return u.toString();
+  }
+
   // Episode-specific OG tags when ?ep= is present
   if (ep) {
     const episode = await prisma.episode.findUnique({ where: { id: ep } });
     if (episode) {
-      const image = episode.imageUrl || podcast.imageUrl;
-      const description = episode.description?.slice(0, 200) || '';
-      const url = `https://www.hallod.hu/${slug}?ep=${ep}`;
+      const coverImage = episode.imageUrl || podcast.imageUrl;
+      const description = stripHtml(episode.description)?.slice(0, 200) || '';
+      const url = `${BASE}/${slug}?ep=${ep}`;
+      const ogImg = ogImageUrl(episode.title, podcast.title, coverImage);
       return {
         title: `${episode.title} – ${podcast.title} | hallod.hu`,
         description,
@@ -49,7 +61,7 @@ export async function generateMetadata(
           description,
           url,
           siteName: 'hallod.hu – A Magyar Podcast Gyűjtő',
-          ...(image && { images: [{ url: image, width: 1400, height: 1400, alt: episode.title }] }),
+          images: [{ url: ogImg, width: 1200, height: 630, alt: episode.title }],
           type: 'website',
           locale: 'hu_HU',
         },
@@ -57,15 +69,16 @@ export async function generateMetadata(
           card: 'summary_large_image',
           title: episode.title,
           description,
-          ...(image && { images: [image] }),
+          images: [ogImg],
         },
       };
     }
   }
 
-  // Default: podcast-level OG tags
+  // Default: podcast-level OG tags (also use the styled card)
   const description = podcast.description?.slice(0, 200) || 'Magyar podcast csatorna a hallod.hu-n';
-  const url = `https://www.hallod.hu/${slug}`;
+  const url = `${BASE}/${slug}`;
+  const ogImg = ogImageUrl(podcast.title, podcast.title, podcast.imageUrl);
   return {
     title: `${podcast.title} – hallod.hu`,
     description,
@@ -74,9 +87,7 @@ export async function generateMetadata(
       description,
       url,
       siteName: 'hallod.hu – A Magyar Podcast Gyűjtő',
-      ...(podcast.imageUrl && {
-        images: [{ url: podcast.imageUrl, width: 1400, height: 1400, alt: podcast.title }],
-      }),
+      images: [{ url: ogImg, width: 1200, height: 630, alt: podcast.title }],
       type: 'website',
       locale: 'hu_HU',
     },
@@ -84,7 +95,7 @@ export async function generateMetadata(
       card: 'summary_large_image',
       title: podcast.title,
       description,
-      ...(podcast.imageUrl && { images: [podcast.imageUrl] }),
+      images: [ogImg],
     },
   };
 }
