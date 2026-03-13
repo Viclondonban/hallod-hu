@@ -28,6 +28,10 @@ model Podcast {
   lastError     String?
 
   episodes      Episode[]
+
+  @@index([category])
+  @@index([isActive])
+  @@index([isFeatured])
 }
 
 model Episode {

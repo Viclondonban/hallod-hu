@@ -1,91 +1,79 @@
-import { NextResponse } from 'next/server';
-import Parser from 'rss-parser';
+import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import Parser from 'rss-parser';
 
-const prisma = new PrismaClient();
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const prisma = globalForPrisma.prisma || new PrismaClient();
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
 const parser = new Parser();
 
-export async function GET(request: Request) {
-  // 1. SECURITY: Keep the bad guys out
-  const authHeader = request.headers.get('authorization');
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new NextResponse('Unauthorized: Invalid CRON_SECRET', { status: 401 });
+    return new NextResponse('Unauthorized', { status: 401 });
   }
 
   try {
-    // 2. Fetch ONLY the active podcasts
-    const activePodcasts = await prisma.podcast.findMany({
-      where: { isActive: true },
-    });
+    const podcasts = await prisma.podcast.findMany();
 
-    let podcastsProcessed = 0;
-    let episodesAddedOrUpdated = 0;
+    let totalNewEpisodes = 0;
 
-    // 3. Loop through them and parse their RSS feeds
-    for (const podcast of activePodcasts) {
-      if (!podcast.feedUrl) continue; // Using your 'feedUrl' field
-
+    for (const podcast of podcasts) {
       try {
-        const feed = await parser.parseURL(podcast.feedUrl);
+        console.log(`Syncing: ${podcast.title}`);
+        const rssUrl = podcast.feedUrl;
 
-        // 4. Save the episodes
-        for (const item of feed.items) {
-          const episodeGuid = item.guid || item.id || item.link || `${podcast.id}-${item.title}`;
-
-          // Using your specific database fields and compound unique constraint
-          await prisma.episode.upsert({
-            where: {
-              podcastId_guid: {
-                podcastId: podcast.id,
-                guid: episodeGuid,
-              }
-            },
-            update: {}, // We do nothing if it already exists
-            create: {
-              podcastId: podcast.id,
-              guid: episodeGuid,
-              title: item.title || "Ismeretlen Cím",
-              description: item.contentSnippet || item.content || null,
-              pubDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-              enclosureUrl: item.enclosure?.url || "", // Using your 'enclosureUrl' field
-              // We leave duration, episodeNumber, and imageUrl null unless you want to parse them later
-            },
-          });
-          episodesAddedOrUpdated++;
+        if (!rssUrl) {
+          console.error(`No RSS URL found for podcast: ${podcast.title}`);
+          continue;
         }
 
-        // 5. Success! Update the 'lastCheckedAt' timestamp
-        await prisma.podcast.update({
-          where: { id: podcast.id },
-          data: { 
-            lastCheckedAt: new Date(),
-            lastError: null 
-          }
-        });
+        const feed = await parser.parseURL(rssUrl);
 
-        podcastsProcessed++;
+        for (const item of feed.items) {
+          const audioUrl = item.enclosure?.url || item.link;
+          // Grab the GUID from the feed, or fallback to the audioUrl if missing
+          const guid = item.guid || audioUrl;
 
-      } catch (feedError: any) {
-        // If one podcast feed breaks (e.g., website is down), log the error 
-        // in the database but continue checking the OTHER podcasts!
-        console.error(`Failed to parse feed for ${podcast.title}:`, feedError.message);
-        await prisma.podcast.update({
-          where: { id: podcast.id },
-          data: { 
-            lastCheckedAt: new Date(),
-            lastError: feedError.message 
+          if (!audioUrl || !item.title || !guid) continue;
+
+          // Check if episode exists
+          const existing = await prisma.episode.findFirst({
+            where: { 
+              OR: [
+                { enclosureUrl: audioUrl },
+                { guid: guid }
+              ]
+            },
+          });
+
+          if (!existing) {
+            await prisma.episode.create({
+              data: {
+                guid: guid, // Added the missing required field!
+                title: item.title,
+                enclosureUrl: audioUrl,
+                pubDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+                description: item.contentSnippet || item.content || '',
+                podcastId: podcast.id,
+              },
+            });
+            totalNewEpisodes++;
           }
-        });
+        }
+      } catch (podcastError) {
+        console.error(`Error syncing ${podcast.title}:`, podcastError);
       }
     }
 
     return NextResponse.json({ 
       success: true, 
-      message: `Checked ${podcastsProcessed}/${activePodcasts.length} active podcasts. Processed ${episodesAddedOrUpdated} episodes.` 
+      message: `Processed ${podcasts.length} podcasts. Added ${totalNewEpisodes} new episodes.` 
     });
 
   } catch (error) {
-    console.error("Cron Sync Fatal Error:", error);
-    return NextResponse.json({ error: 'Fatal error during sync' }, { status: 500 });
+    console.error('Global Cron Error:', error);
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
   }
 }

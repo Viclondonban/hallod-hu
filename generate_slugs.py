@@ -1,11 +1,17 @@
+import os
 import re
-import time
 import logging
 import unicodedata
 from supabase import create_client, Client
 
-SUPABASE_URL = "https://zrfekgzhlcaucahsibrt.supabase.co"
-SUPABASE_KEY = "sb_publishable__fy1z7npgbxEE6f9OBjEIw_NrB3G2fh"
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise EnvironmentError(
+        "SUPABASE_URL and SUPABASE_KEY must be set as environment variables. "
+        "Run: export SUPABASE_URL=... SUPABASE_KEY=... before executing this script."
+    )
 
 # 🛡️ THE SHIELD: Slugs that podcasts are NOT allowed to use!
 RESERVED_SLUGS = {

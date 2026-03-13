@@ -24,15 +24,24 @@ export default async function CategoryPage({ params }: Props) {
   const rawName = resolvedParams?.categoryName || "";
   const decodedCategoryName = decodeURIComponent(rawName);
 
-  // 3. Fetch all active podcasts that match this specific category
+  // 3. Verify this category actually exists in the database
+  const category = await prisma.category.findFirst({
+    where: { name: decodedCategoryName },
+  });
+
+  if (!category) {
+    notFound();
+  }
+
+  // 4. Fetch all active podcasts that match this specific category
   const rawPodcasts = await prisma.podcast.findMany({
-    where: { 
+    where: {
       isActive: true,
-      category: decodedCategoryName 
+      category: decodedCategoryName
     },
     select: {
       id: true,
-      slug: true, // <--- ADDED THIS so we can use the slug in the URL!
+      slug: true,
       title: true,
       author: true,
       imageUrl: true,
@@ -45,12 +54,7 @@ export default async function CategoryPage({ params }: Props) {
     },
   });
 
-  // If the database query completely fails, show a 404
-  if (!rawPodcasts) {
-    notFound();
-  }
-
-  // 4. Sort them so the freshest episodes are at the top
+  // 5. Sort them so the freshest episodes are at the top
   const sortedPodcasts = rawPodcasts.sort((a, b) => {
     const timeA = a.episodes[0]?.pubDate ? new Date(a.episodes[0].pubDate).getTime() : 0;
     const timeB = b.episodes[0]?.pubDate ? new Date(b.episodes[0].pubDate).getTime() : 0;

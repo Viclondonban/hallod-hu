@@ -25,11 +25,11 @@ export default function PodcastManager() {
   }, []);
 
   const filteredPodcasts = useMemo(() => {
-    if (!searchTerm) return [];
+    if (!searchTerm) return localPodcasts.slice(0, 15);
     const lower = searchTerm.toLowerCase();
     return localPodcasts
       .filter((p) => p.title.toLowerCase().includes(lower))
-      .slice(0, 15); 
+      .slice(0, 15);
   }, [searchTerm, localPodcasts]);
 
   const handleToggle = async (id: string, currentStatus: boolean) => {

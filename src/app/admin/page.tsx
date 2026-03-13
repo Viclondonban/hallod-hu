@@ -39,8 +39,11 @@ export default async function AdminPage() {
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  // 📋 THE VIP LIST
-  const allowedEmails = ['viclondonban@gmail.com', 'viktor@vixt.co'];
+  // 📋 THE VIP LIST — configured via ADMIN_EMAILS env var (comma-separated)
+  const allowedEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map(e => e.trim())
+    .filter(Boolean);
 
   // If no session, or the email is NOT on the VIP list, kick them out
   if (!session || !allowedEmails.includes(session.user?.email || '')) {

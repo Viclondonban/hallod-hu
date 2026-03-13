@@ -7,8 +7,8 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// 🚀 Performance Upgrade: Cache this page for 1 hour to make it lightning fast!
-export const revalidate = 3600;
+// Cache for 60 seconds — matches the home page so episode counts stay in sync
+export const revalidate = 60;
 
 export default async function PodcastDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   // Grab the slug from the URL (e.g. "viclondonban")
@@ -86,7 +86,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
               </svg>
               <span>{episodes.length} Episodes</span>
             </div>
-            <p className="text-gray-700 leading-relaxed text-sm md:text-base line-clamp-[10] hover:line-clamp-none transition-all cursor-pointer pr-4" title="Click to expand description">
+            <p className="text-gray-700 leading-relaxed text-sm md:text-base pr-4">
               {podcast.description}
             </p>
           </div>

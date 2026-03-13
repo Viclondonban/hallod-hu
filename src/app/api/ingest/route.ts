@@ -1,8 +1,37 @@
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import Parser from 'rss-parser';
 import { PrismaClient } from '@prisma/client';
 
-// 1. ADDED SLUGIFY FUNCTION (Handling Hungarian accents)
+// --- Auth helper ---
+async function requireAdmin(): Promise<NextResponse | null> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {},
+      },
+    }
+  );
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+  }
+  const allowedEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map(e => e.trim())
+    .filter(Boolean);
+  if (!allowedEmails.includes(session.user?.email || '')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
+
+// --- Slug helper ---
 function slugify(text: string) {
   return text
     .toString()
@@ -15,6 +44,7 @@ function slugify(text: string) {
     .replace(/--+/g, '-');
 }
 
+// --- Duration parser ---
 function parseDurationToSeconds(durationStr: string | undefined | null): number | null {
   if (!durationStr) return null;
   if (/^\d+$/.test(durationStr)) return parseInt(durationStr, 10);
@@ -32,6 +62,9 @@ const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 export async function POST(request: Request) {
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   let feedUrl = '';
   try {
     const body = await request.json();
@@ -50,10 +83,9 @@ export async function POST(request: Request) {
       feed = await parser.parseURL(feedUrl);
     } catch (parseError) {
       console.error('[API] RSS Parse Error:', parseError);
-      return NextResponse.json({ error: `Failed to parse RSS. Is the URL correct?` }, { status: 422 });
+      return NextResponse.json({ error: 'Failed to parse RSS. Is the URL correct?' }, { status: 422 });
     }
 
-    // 2. GENERATE THE SLUG HERE
     const slug = slugify(feed.title || 'podcast');
 
     console.log(`[API] Feed found: "${feed.title}" with ${feed.items.length} episodes.`);
@@ -62,6 +94,7 @@ export async function POST(request: Request) {
     const podcast = await prisma.podcast.upsert({
       where: { feedUrl: feedUrl },
       update: {
+        slug: slug, // Keep slug in sync with title changes
         title: feed.title || 'Unknown Title',
         description: feed.description?.substring(0, 1000),
         author: feed.itunes?.author,
@@ -74,7 +107,7 @@ export async function POST(request: Request) {
       create: {
         feedUrl: feedUrl,
         title: feed.title || 'Unknown Title',
-        slug: slug, // 3. ADDED SLUG TO CREATE
+        slug: slug,
         description: feed.description?.substring(0, 1000),
         author: feed.itunes?.author,
         websiteUrl: feed.link,
@@ -82,7 +115,7 @@ export async function POST(request: Request) {
         language: feed.language || 'hu',
         lastCheckedAt: new Date(),
         category: category || 'Egyéb',
-        isActive: true, // 4. ENSURE IT IS ACTIVE BY DEFAULT
+        isActive: true,
       }
     });
 
@@ -124,32 +157,35 @@ export async function POST(request: Request) {
       });
 
       if (episode.createdAt.getTime() === episode.updatedAt.getTime()) {
-          newEpisodesCount++;
+        newEpisodesCount++;
       } else {
-          updatedEpisodesCount++;
+        updatedEpisodesCount++;
       }
     }
 
+    console.log(`[API] Done. New: ${newEpisodesCount}, Updated: ${updatedEpisodesCount}`);
+
     return NextResponse.json({
       status: 'Success',
-      message: `Podcast saved.`,
+      message: 'Podcast saved.',
       podcast: podcast
     }, { status: 200 });
 
   } catch (error) {
     console.error('[API] Critical Error during ingestion:', error);
     if (feedUrl) {
-       try {
-         await prisma.podcast.update({
-             where: { feedUrl: feedUrl },
-             data: { lastError: (error as Error).message }
-         });
-       } catch (dbError) { 
-         console.error('Could not save error to DB', dbError);
-       }
+      try {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        await prisma.podcast.update({
+          where: { feedUrl: feedUrl },
+          data: { lastError: errorMsg }
+        });
+      } catch (dbError) {
+        console.error('Could not save error to DB', dbError);
+      }
     }
     return NextResponse.json(
-      { error: 'A server error occurred.', details: (error as Error).message },
+      { error: 'A server error occurred.' },
       { status: 500 }
     );
   }

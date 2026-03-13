@@ -1,12 +1,44 @@
 // src/app/api/update-category/route.ts
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { PrismaClient } from '@prisma/client';
+
+// --- Auth helper ---
+async function requireAdmin(): Promise<NextResponse | null> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {},
+      },
+    }
+  );
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+  }
+  const allowedEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map(e => e.trim())
+    .filter(Boolean);
+  if (!allowedEmails.includes(session.user?.email || '')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 export async function POST(request: Request) {
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const { podcastId, newCategory } = body;
@@ -20,7 +52,6 @@ export async function POST(request: Request) {
 
     console.log(`[API] Updating category for podcast ID: ${podcastId} to "${newCategory}"`);
 
-    // Update the podcast record in the database
     const podcast = await prisma.podcast.update({
       where: { id: podcastId },
       data: {
@@ -39,7 +70,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[API] Error updating category:', error);
     return NextResponse.json(
-      { error: 'A server error occurred.', details: (error as Error).message },
+      { error: 'A server error occurred.' },
       { status: 500 }
     );
   }

@@ -92,8 +92,9 @@ export default function AdminClientPage({ podcasts, dbCategories }: Props) {
             } else { 
               updateRowState(idx, { status: `❌ Error: ${data.error}`, isError: true });
             }
-        } catch (err) { 
-            updateRowState(idx, { status: `❌ Error: ${(err as Error).message}`, isError: true });
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            updateRowState(idx, { status: `❌ Error: ${msg}`, isError: true });
         }
     } 
     setIsBulkIngesting(false);
@@ -112,10 +113,11 @@ export default function AdminClientPage({ podcasts, dbCategories }: Props) {
         const data = await res.json(); 
         if (res.ok) setEditStatus({ message: data.message, type: 'success' }); 
         else setEditStatus({ message: `Error: ${data.error}`, type: 'error' });
-    } catch (err) { 
-        setEditStatus({ message: `Error: ${(err as Error).message}`, type: 'error' }); 
-    } finally { 
-        setIsEditing(false); 
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setEditStatus({ message: `Error: ${msg}`, type: 'error' });
+    } finally {
+        setIsEditing(false);
     }
   }
 
@@ -144,10 +146,11 @@ export default function AdminClientPage({ podcasts, dbCategories }: Props) {
       } else {
         setBannerStatus({ message: data.error, type: 'error' });
       }
-    } catch (err) { 
-      setBannerStatus({ message: (err as Error).message, type: 'error' }); 
-    } finally { 
-      setIsUpdatingBanner(false); 
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setBannerStatus({ message: msg, type: 'error' });
+    } finally {
+      setIsUpdatingBanner(false);
     }
   }
 
@@ -198,10 +201,11 @@ export default function AdminClientPage({ podcasts, dbCategories }: Props) {
         });
         if (res.ok) setOrderStatus({ message: 'Category order saved successfully!', type: 'success' });
         else setOrderStatus({ message: 'Failed to save order.', type: 'error' });
-    } catch (err) { 
-        setOrderStatus({ message: (err as Error).message, type: 'error' }); 
-    } finally { 
-        setIsSavingOrder(false); 
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setOrderStatus({ message: msg, type: 'error' });
+    } finally {
+        setIsSavingOrder(false);
     }
   }
 
