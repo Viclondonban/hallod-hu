@@ -50,13 +50,14 @@ async function backfillPodcast(podcast: { id: string; title: string; feedUrl: st
     const guid = item.guid || audioUrl;
     if (!guid) continue;
 
-    const rawImage = (item as Record<string, unknown>).itunesImage;
+    const itemAsUnknown = item as unknown as Record<string, unknown>;
+    const rawImage = itemAsUnknown.itunesImage;
     const episodeImageUrl: string | null =
       (rawImage && typeof rawImage === 'object' && '$' in rawImage
         ? (rawImage as { $?: { href?: string } }).$?.href
         : typeof rawImage === 'string' ? rawImage : null) ?? null;
 
-    const rawDuration = (item as Record<string, unknown>).itunesDuration ?? item.itunes?.duration;
+    const rawDuration = itemAsUnknown.itunesDuration ?? item.itunes?.duration;
     let durationSeconds: number | null = null;
     if (rawDuration) {
       const parts = String(rawDuration).split(':').map(Number);
