@@ -188,31 +188,36 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
           {episodes.map((episode) => {
             const coverImage = episode.imageUrl || podcast.imageUrl;
             return (
-              <div key={episode.id} id={`ep-${episode.id}`} className="p-5 hover:bg-gray-50 transition-colors group">
-                <div className="flex gap-4">
-                  {/* Episode thumbnail */}
-                  <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-200 shadow-sm">
-                    {coverImage ? (
-                      <Image
-                        src={coverImage}
-                        alt={episode.title}
-                        width={96}
-                        height={96}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                      </div>
-                    )}
+              <div key={episode.id} id={`ep-${episode.id}`} className="p-4 sm:p-5 hover:bg-gray-50 transition-colors group">
+                <div className="flex gap-3 sm:gap-4">
+                  {/* LEFT column: thumbnail + mobile play button below */}
+                  <div className="flex-shrink-0 flex flex-col gap-2">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-200 shadow-sm">
+                      {coverImage ? (
+                        <Image
+                          src={coverImage}
+                          alt={episode.title}
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    {/* Mobile only: play button sits in the empty space below thumbnail */}
+                    <div className="sm:hidden">
+                      <EpisodePlayer src={episode.enclosureUrl} />
+                    </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-grow min-w-0">
-                    {/* Title row */}
+                  {/* RIGHT column: meta + mobile share + desktop buttons */}
+                  <div className="flex-grow min-w-0 flex flex-col">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-1">
                       <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">
                         {episode.title}
@@ -229,13 +234,18 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
                         )}
                       </div>
                     </div>
-
-                    <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+                    <p className="text-xs text-gray-500 line-clamp-2 flex-grow">
                       {episode.description}
                     </p>
-
-                    {/* Audio player + share */}
-                    <div className="flex items-center gap-2">
+                    {/* Mobile only: share button in right column */}
+                    <div className="sm:hidden mt-2">
+                      <ShareButton
+                        episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl }}
+                        podcast={{ title: podcast.title, slug: podcast.slug, imageUrl: podcast.imageUrl }}
+                      />
+                    </div>
+                    {/* Desktop only: both buttons in a row */}
+                    <div className="hidden sm:flex items-center gap-2 mt-3">
                       <EpisodePlayer src={episode.enclosureUrl} />
                       <ShareButton
                         episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl }}
