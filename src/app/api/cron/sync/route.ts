@@ -61,14 +61,15 @@ async function syncPodcast(podcast: { id: string; title: string; feedUrl: string
     if (!audioUrl || !item.title || !guid) continue;
 
     // Extract episode-level cover art from itunes:image (href attribute or plain string)
-    const rawImage = (item as Record<string, unknown>).itunesImage;
+    const itemAsUnknown = item as unknown as Record<string, unknown>;
+    const rawImage = itemAsUnknown.itunesImage;
     const episodeImageUrl: string | null =
       (rawImage && typeof rawImage === 'object' && '$' in rawImage
         ? (rawImage as { $?: { href?: string } }).$?.href
         : typeof rawImage === 'string' ? rawImage : null) ?? null;
 
     // Parse duration: itunes:duration can be "HH:MM:SS", "MM:SS", or plain seconds
-    const rawDuration = (item as Record<string, unknown>).itunesDuration ?? item.itunes?.duration;
+    const rawDuration = itemAsUnknown.itunesDuration;
     let durationSeconds: number | null = null;
     if (rawDuration) {
       const parts = String(rawDuration).split(':').map(Number);
