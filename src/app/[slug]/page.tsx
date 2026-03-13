@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import ShareButton from './share-button';
+import EpisodePlayer from './episode-player';
 
 // Initialize Prisma Client to talk to the database
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
@@ -160,15 +161,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
 
                     {/* Audio player + share */}
                     <div className="flex items-center gap-2">
-                      <audio
-                        controls
-                        className="flex-grow h-9 focus:outline-none rounded-full overflow-hidden"
-                        style={{ minWidth: 0 }}
-                        preload="none"
-                      >
-                        <source src={episode.enclosureUrl} type="audio/mpeg" />
-                        Your browser does not support the audio element.
-                      </audio>
+                      <EpisodePlayer src={episode.enclosureUrl} />
                       <ShareButton
                         episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl }}
                         podcast={{ title: podcast.title, slug: podcast.slug, imageUrl: podcast.imageUrl }}
