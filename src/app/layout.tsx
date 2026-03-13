@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "hallod.hu - A Magyar Podcast Gyűjtő",
   description: "Az összes magyar nyelvű podcast egy helyen.",
-  metadataBase: new URL('https://hallod.hu'), // Required for relative image paths
+  metadataBase: new URL('https://www.hallod.hu'), // Required for relative image paths
   
   // OpenGraph (Facebook, LinkedIn, Slack)
   openGraph: {

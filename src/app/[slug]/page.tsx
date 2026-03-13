@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import ShareButton from './share-button';
 import EpisodePlayer from './episode-player';
 
@@ -12,6 +13,39 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Cache for 60 seconds — matches the home page so episode counts stay in sync
 export const revalidate = 60;
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ slug: string }> }
+): Promise<Metadata> {
+  const { slug } = await params;
+  const podcast = await prisma.podcast.findUnique({ where: { slug } });
+  if (!podcast) return {};
+
+  const description = podcast.description?.slice(0, 200) || 'Magyar podcast csatorna a hallod.hu-n';
+  const url = `https://www.hallod.hu/${slug}`;
+
+  return {
+    title: `${podcast.title} – hallod.hu`,
+    description,
+    openGraph: {
+      title: podcast.title,
+      description,
+      url,
+      siteName: 'hallod.hu – A Magyar Podcast Gyűjtő',
+      ...(podcast.imageUrl && {
+        images: [{ url: podcast.imageUrl, width: 1400, height: 1400, alt: podcast.title }],
+      }),
+      type: 'website',
+      locale: 'hu_HU',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: podcast.title,
+      description,
+      ...(podcast.imageUrl && { images: [podcast.imageUrl] }),
+    },
+  };
+}
 
 export default async function PodcastDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   // Grab the slug from the URL (e.g. "viclondonban")
