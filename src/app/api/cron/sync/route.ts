@@ -6,11 +6,8 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// 5 second timeout per feed
-const parser = new Parser({ timeout: 5000 });
-
-// 3 parallel podcasts keeps well within Vercel Hobby's 10s limit
-const BATCH_SIZE = 3;
+// 10 second timeout per feed (Railway has no function timeout limit)
+const parser = new Parser({ timeout: 10000 });
 
 // Only check the N most recent items from each feed.
 // Running every 15 min means at most 1-2 new episodes exist — no need to
@@ -93,10 +90,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // No take() limit — Railway has no function timeout, so process all due podcasts
     const podcasts = await prisma.podcast.findMany({
       where: { isActive: true, nextCheckAt: { lte: new Date() } },
       orderBy: { nextCheckAt: 'asc' },
-      take: BATCH_SIZE,
       select: { id: true, title: true, feedUrl: true },
     });
 
