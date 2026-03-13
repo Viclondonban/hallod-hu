@@ -57,7 +57,7 @@ async function backfillPodcast(podcast: { id: string; title: string; feedUrl: st
         ? (rawImage as { $?: { href?: string } }).$?.href
         : typeof rawImage === 'string' ? rawImage : null) ?? null;
 
-    const rawDuration = itemAsUnknown.itunesDuration ?? item.itunes?.duration;
+    const rawDuration = itemAsUnknown.itunesDuration;
     let durationSeconds: number | null = null;
     if (rawDuration) {
       const parts = String(rawDuration).split(':').map(Number);
