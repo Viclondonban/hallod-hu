@@ -7,7 +7,15 @@ const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // 10 second timeout per feed (Railway has no function timeout limit)
-const parser = new Parser({ timeout: 10000 });
+const parser = new Parser({
+  timeout: 10000,
+  customFields: {
+    item: [
+      ['itunes:image', 'itunesImage'],
+      ['itunes:duration', 'itunesDuration'],
+    ],
+  },
+});
 
 // Only check the N most recent items from each feed.
 // Running every 15 min means at most 1-2 new episodes exist — no need to
@@ -52,10 +60,31 @@ async function syncPodcast(podcast: { id: string; title: string; feedUrl: string
     const guid = item.guid || audioUrl;
     if (!audioUrl || !item.title || !guid) continue;
 
+    // Extract episode-level cover art from itunes:image (href attribute or plain string)
+    const rawImage = (item as Record<string, unknown>).itunesImage;
+    const episodeImageUrl: string | null =
+      (rawImage && typeof rawImage === 'object' && '$' in rawImage
+        ? (rawImage as { $?: { href?: string } }).$?.href
+        : typeof rawImage === 'string' ? rawImage : null) ?? null;
+
+    // Parse duration: itunes:duration can be "HH:MM:SS", "MM:SS", or plain seconds
+    const rawDuration = (item as Record<string, unknown>).itunesDuration ?? item.itunes?.duration;
+    let durationSeconds: number | null = null;
+    if (rawDuration) {
+      const parts = String(rawDuration).split(':').map(Number);
+      if (parts.length === 3) durationSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      else if (parts.length === 2) durationSeconds = parts[0] * 60 + parts[1];
+      else if (parts.length === 1 && !isNaN(parts[0])) durationSeconds = parts[0];
+    }
+
     // Single upsert instead of findFirst + create — half the DB roundtrips
     const result = await prisma.episode.upsert({
       where: { podcastId_guid: { podcastId: podcast.id, guid } },
-      update: {},
+      update: {
+        // Update image and duration in case they change after initial ingest
+        ...(episodeImageUrl && { imageUrl: episodeImageUrl }),
+        ...(durationSeconds && { duration: durationSeconds }),
+      },
       create: {
         guid,
         title: item.title,
@@ -63,6 +92,8 @@ async function syncPodcast(podcast: { id: string; title: string; feedUrl: string
         pubDate: item.pubDate ? new Date(item.pubDate) : new Date(),
         description: item.contentSnippet || item.content || '',
         podcastId: podcast.id,
+        imageUrl: episodeImageUrl,
+        duration: durationSeconds,
       },
     });
 

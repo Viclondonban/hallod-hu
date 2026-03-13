@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import ShareButton from './share-button';
 
 // Initialize Prisma Client to talk to the database
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
@@ -69,9 +71,16 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
         {/* Podcast Header Info */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8 flex flex-col md:flex-row gap-8 items-start">
           {/* Cover Art */}
-          <div className="w-full md:w-64 lg:w-72 flex-shrink-0 aspect-square bg-gray-200 rounded-lg overflow-hidden shadow-sm">
+          <div className="w-full md:w-64 lg:w-72 flex-shrink-0 aspect-square bg-gray-200 rounded-lg overflow-hidden shadow-sm relative">
             {podcast.imageUrl ? (
-              <img src={podcast.imageUrl} alt={podcast.title} className="w-full h-full object-cover" />
+              <Image
+                src={podcast.imageUrl}
+                alt={podcast.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 288px"
+                className="object-cover"
+                unoptimized
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
             )}
@@ -100,42 +109,76 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
               No episodes found for this podcast.
             </div>
           )}
-          {episodes.map((episode) => (
-            <div key={episode.id} className="p-6 hover:bg-gray-50 transition-colors group">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 sm:mb-0 group-hover:text-blue-600 transition-colors">
-                  {episode.title}
-                </h3>
-                <div className="flex items-center text-sm text-gray-500 gap-4 flex-shrink-0">
-                  {/* Date */}
-                  <span className="hidden sm:inline">{formatDate(new Date(episode.pubDate))}</span>
-                  {/* Duration */}
-                  {episode.duration && (
-                    <span className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {formatDuration(episode.duration)}
-                    </span>
-                  )}
+          {episodes.map((episode) => {
+            const coverImage = episode.imageUrl || podcast.imageUrl;
+            return (
+              <div key={episode.id} className="p-5 hover:bg-gray-50 transition-colors group">
+                <div className="flex gap-4">
+                  {/* Episode thumbnail */}
+                  <div className="flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-200 shadow-sm">
+                    {coverImage ? (
+                      <Image
+                        src={coverImage}
+                        alt={episode.title}
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-grow min-w-0">
+                    {/* Title row */}
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-1">
+                      <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">
+                        {episode.title}
+                      </h3>
+                      <div className="flex items-center text-xs text-gray-400 gap-3 flex-shrink-0">
+                        <span>{formatDate(new Date(episode.pubDate))}</span>
+                        {episode.duration && (
+                          <span className="flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {formatDuration(episode.duration)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+                      {episode.description}
+                    </p>
+
+                    {/* Audio player + share */}
+                    <div className="flex items-center gap-2">
+                      <audio
+                        controls
+                        className="flex-grow h-9 focus:outline-none rounded-full overflow-hidden"
+                        style={{ minWidth: 0 }}
+                        preload="none"
+                      >
+                        <source src={episode.enclosureUrl} type="audio/mpeg" />
+                        Your browser does not support the audio element.
+                      </audio>
+                      <ShareButton
+                        episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl }}
+                        podcast={{ title: podcast.title, slug: podcast.slug, imageUrl: podcast.imageUrl }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-              {/* Date for mobile */}
-              <div className="sm:hidden text-sm text-gray-500 mb-2">{formatDate(new Date(episode.pubDate))}</div>
-
-              <p className="text-sm text-gray-600 line-clamp-3 mb-4">
-                {episode.description}
-              </p>
-
-              {/* Audio Player - Custom Styling */}
-              <div className="w-full">
-                <audio controls className="w-full h-12 focus:outline-none bg-gray-100 rounded-full overflow-hidden" preload="none">
-                  <source src={episode.enclosureUrl} type="audio/mpeg" />
-                  Your browser does not support the audio element.
-                </audio>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </main>

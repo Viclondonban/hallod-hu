@@ -38,6 +38,9 @@ export default function AdminClientPage({ podcasts, dbCategories }: Props) {
   const [orderStatus, setOrderStatus] = useState<{ message: string; type: 'success' | 'error' | '' }>({ message: '', type: '' });
   const [isSavingOrder, setIsSavingOrder] = useState(false);
 
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState<{ message: string; type: 'success' | 'error' | '' }>({ message: '', type: '' });
+
   // --- EFFECTS ---
   useEffect(() => {
     if (podcasts.length > 0) {
@@ -209,6 +212,23 @@ export default function AdminClientPage({ podcasts, dbCategories }: Props) {
     }
   }
 
+  async function handleBackfillImages() {
+    if (!window.confirm('This will re-fetch all RSS feeds and fill in missing episode cover art and durations. It may take a minute. Continue?')) return;
+    setIsBackfilling(true);
+    setBackfillStatus({ message: '', type: '' });
+    try {
+      const res = await fetch('/api/admin/backfill-images', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) setBackfillStatus({ message: data.message, type: 'success' });
+      else setBackfillStatus({ message: data.error || 'Failed', type: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setBackfillStatus({ message: msg, type: 'error' });
+    } finally {
+      setIsBackfilling(false);
+    }
+  }
+
   // --- JSX ---
   return (
     <main className="min-h-screen p-8 bg-gray-50 text-gray-900">
@@ -345,6 +365,25 @@ export default function AdminClientPage({ podcasts, dbCategories }: Props) {
                   </div>
                 )}
               </div>
+
+              {/* BACKFILL IMAGES */}
+              <div className="bg-white p-6 rounded-lg shadow-md h-fit">
+                <h2 className="text-xl font-semibold mb-2 pb-2 border-b border-gray-200">5. Backfill Cover Art</h2>
+                <p className="text-gray-500 text-sm mb-4">Re-fetches all RSS feeds to fill in missing episode cover art and durations for existing episodes.</p>
+                <button
+                  onClick={handleBackfillImages}
+                  disabled={isBackfilling}
+                  className="w-full py-2 bg-purple-600 text-white font-medium rounded-md shadow-sm hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isBackfilling ? 'Backfilling... (may take a minute)' : 'Run Backfill'}
+                </button>
+                {backfillStatus.message && (
+                  <div className={`mt-4 p-3 rounded-md text-sm font-medium ${backfillStatus.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                    {backfillStatus.message}
+                  </div>
+                )}
+              </div>
+
           </div>
         </div>
 
