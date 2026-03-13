@@ -238,8 +238,8 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
                   </div>
                 </div>
 
-                {/* Buttons: stacked on mobile, side by side on desktop */}
-                <div className="flex flex-col sm:flex-row gap-2">
+                {/* Buttons: side by side on all screen sizes */}
+                <div className="flex flex-row gap-2">
                   <EpisodePlayer src={episode.enclosureUrl} />
                   <ShareButton
                     episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl }}
