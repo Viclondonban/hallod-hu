@@ -62,7 +62,7 @@ export default function ShareButton({ episode, podcast }: ShareButtonProps) {
       <button
         onClick={() => setIsOpen(true)}
         title="Megosztás"
-        className="flex-1 md:flex-none flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold border transition-colors"
+        className="flex-none flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold border transition-colors"
         style={{ borderColor: '#2b946b', color: '#2b946b', backgroundColor: 'transparent' }}
         onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f0faf6'; }}
         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
