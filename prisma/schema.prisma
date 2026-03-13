@@ -23,6 +23,7 @@ model Podcast {
   language      String?  @default("hu")
   category      String?  @default("Egyéb")
   lastCheckedAt DateTime @default(now())
+  nextCheckAt   DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   lastError     String?
@@ -32,6 +33,7 @@ model Podcast {
   @@index([category])
   @@index([isActive])
   @@index([isFeatured])
+  @@index([isActive, nextCheckAt])
 }
 
 model Episode {
