@@ -197,7 +197,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
               <div key={episode.id} id={`ep-${episode.id}`} className="p-4 sm:p-5 hover:bg-gray-50 transition-colors group">
                 {/* Content row: thumbnail + meta */}
                 <div className="flex gap-3 sm:gap-4 mb-3">
-                  <div className="flex-shrink-0 w-16 h-16 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-200 shadow-sm">
+                  <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-lg overflow-hidden bg-gray-200 shadow-sm">
                     {coverImage ? (
                       <Image
                         src={coverImage}

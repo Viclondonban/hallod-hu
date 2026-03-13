@@ -12,6 +12,7 @@ export default function EpisodePlayer({ src }: EpisodePlayerProps) {
         src={src}
         preload="none"
         className="w-full"
+        style={{ height: '36px' }}
       />
     </div>
   );
