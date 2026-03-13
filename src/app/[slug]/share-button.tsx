@@ -62,12 +62,12 @@ export default function ShareButton({ episode, podcast }: ShareButtonProps) {
       <button
         onClick={() => setIsOpen(true)}
         title="Megosztás"
-        className="flex items-center gap-1 text-xs text-gray-400 transition-colors px-2 py-1 rounded-md"
-        style={{ ['--hover-color' as string]: '#2b946b' }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#2b946b'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#f0faf6'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = ''; (e.currentTarget as HTMLButtonElement).style.backgroundColor = ''; }}
+        className="flex-1 md:flex-none flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold border transition-colors"
+        style={{ borderColor: '#2b946b', color: '#2b946b', backgroundColor: 'transparent' }}
+        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f0faf6'; }}
+        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
         </svg>
