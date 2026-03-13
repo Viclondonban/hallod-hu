@@ -21,13 +21,13 @@ export default function EpisodePlayer({ src }: EpisodePlayerProps) {
   };
 
   return (
-    <>
+    <div className="flex-1 min-w-0 flex items-center">
       {/* ── DESKTOP: original clean native player ── */}
       <audio
         controls
         src={src}
         preload="none"
-        className="hidden md:block flex-grow h-9 min-w-0 focus:outline-none"
+        className="hidden md:flex flex-grow h-9 min-w-0 focus:outline-none w-full"
       />
 
       {/* ── MOBILE: Hallgatás button → expands to player ── */}
@@ -76,6 +76,6 @@ export default function EpisodePlayer({ src }: EpisodePlayerProps) {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
