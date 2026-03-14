@@ -62,12 +62,17 @@ export async function generateMetadata(
       const description = stripHtml(episode.description)?.slice(0, 200) || '';
       const url = `${BASE}/${slug}?ep=${ep}`;
       const ogImg = ogImageUrl(episode.title, podcast.title, coverImage, description, episode.id);
+      // og:title = podcast name so Facebook bottom strip shows the channel, not the episode title again
+      // (the episode title is already large in the OG image itself)
+      const ogDescription = description
+        ? `${episode.title} — ${description}`
+        : episode.title;
       return {
         title: `${episode.title} – ${podcast.title} | hallod.hu`,
-        description,
+        description: ogDescription,
         openGraph: {
-          title: episode.title,
-          description,
+          title: podcast.title,
+          description: ogDescription,
           url,
           siteName: 'hallod.hu – A Magyar Podcast Gyűjtő',
           images: [{ url: ogImg, width: 1200, height: 630, alt: episode.title }],
@@ -76,8 +81,8 @@ export async function generateMetadata(
         },
         twitter: {
           card: 'summary_large_image',
-          title: episode.title,
-          description,
+          title: podcast.title,
+          description: ogDescription,
           images: [ogImg],
         },
       };
