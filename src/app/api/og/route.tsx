@@ -12,22 +12,16 @@ function pickColor(id: string): string {
 }
 
 /*
-  Card layout — 1200×1200px:
-  ┌────────────────────────────────┐
-  │ S │                            │  ← top row: 1200×1100
-  │ P │   COVER ART  1100×1100     │    spine: 100px wide, accent colour
-  │ I │                            │    cover: 1100×1100 (perfect square)
-  │ N │                            │
-  │ E │                            │
-  ├───┴────────────────────────────┤
-  │  DESCRIPTION STRIP  1200×100  │
-  └────────────────────────────────┘
+  Card layout — 1200×630px (standard OG landscape):
+  ┌──────────────────┬───────────────────────────┐
+  │                  │  podcast name             │
+  │   COVER ART      │                           │
+  │   630 × 630      │  Episode title            │
+  │   (square crop)  │                           │
+  │                  │  hallod.hu                │
+  └──────────────────┴───────────────────────────┘
+  Right panel background = brand accent colour
 */
-
-const TOTAL  = 1200;
-const SPINE  = 100;  // spine width = description height (so cover = 1100×1100, perfectly square)
-const COVER  = 1100;
-const DESC_H = 100;
 
 export async function GET(req: NextRequest) {
   try {
@@ -35,135 +29,122 @@ export async function GET(req: NextRequest) {
     const title       = searchParams.get('title')   ?? 'Magyar Podcast';
     const podcastName = searchParams.get('podcast') ?? '';
     const imageUrl    = searchParams.get('image')   ?? null;
-    const description = searchParams.get('desc')    ?? '';
     const id          = searchParams.get('id')      ?? title;
 
     const accentColor = pickColor(id);
+
+    // Scale episode title font size to avoid overflow
+    const titleFontSize = title.length > 80 ? 34 : title.length > 55 ? 40 : title.length > 35 ? 48 : 56;
 
     return new ImageResponse(
       (
         <div
           style={{
             display: 'flex',
-            flexDirection: 'column',
-            width: `${TOTAL}px`,
-            height: `${TOTAL}px`,
-            background: '#f0f0f0',
+            flexDirection: 'row',
+            width: '1200px',
+            height: '630px',
           }}
         >
-          {/* ── TOP ROW: spine + cover ── */}
+          {/* LEFT — cover art, square crop */}
+          <div
+            style={{
+              width: '630px',
+              height: '630px',
+              flexShrink: 0,
+              overflow: 'hidden',
+              display: 'flex',
+            }}
+          >
+            {imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imageUrl}
+                width={630}
+                height={630}
+                style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                alt=""
+              />
+            ) : (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  background: accentColor,
+                  display: 'flex',
+                }}
+              />
+            )}
+          </div>
+
+          {/* RIGHT — brand colour panel with text */}
           <div
             style={{
               display: 'flex',
-              flexDirection: 'row',
-              width: `${TOTAL}px`,
-              height: `${COVER}px`,
+              flexDirection: 'column',
+              flex: 1,
+              background: accentColor,
+              padding: '52px 52px',
+              justifyContent: 'space-between',
             }}
           >
-            {/* SPINE — accent colour with "hallod.hu" rotated */}
+            {/* Podcast name */}
             <div
               style={{
-                width: `${SPINE}px`,
-                height: `${COVER}px`,
-                background: accentColor,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                fontSize: '20px',
+                fontWeight: 700,
+                color: 'rgba(255,255,255,0.75)',
+                textTransform: 'uppercase',
+                letterSpacing: '3px',
+                lineHeight: 1,
               }}
             >
-              <span
+              {podcastName}
+            </div>
+
+            {/* Episode title */}
+            <div
+              style={{
+                fontSize: `${titleFontSize}px`,
+                fontWeight: 800,
+                color: '#ffffff',
+                lineHeight: 1.2,
+              }}
+            >
+              {title}
+            </div>
+
+            {/* hallod.hu branding */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              }}
+            >
+              <div
                 style={{
-                  fontSize: '30px',
-                  fontWeight: 700,
-                  color: 'rgba(255,255,255,0.92)',
-                  letterSpacing: '10px',
-                  textTransform: 'lowercase',
-                  whiteSpace: 'nowrap',
-                  transform: 'rotate(-90deg)',
-                  display: 'block',
+                  fontSize: '28px',
+                  fontWeight: 800,
+                  color: '#ffffff',
+                  letterSpacing: '-0.5px',
                 }}
               >
                 hallod.hu
-              </span>
-            </div>
-
-            {/* COVER ART — 1100×1100, always square */}
-            <div
-              style={{
-                width: `${COVER}px`,
-                height: `${COVER}px`,
-                overflow: 'hidden',
-                display: 'flex',
-              }}
-            >
-              {imageUrl ? (
-                // next/og fetches remote images server-side — no CORS issue
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageUrl}
-                  width={COVER}
-                  height={COVER}
-                  style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                  alt=""
-                />
-              ) : (
-                // Last resort — no artwork at all
-                <div
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    background: accentColor,
-                    display: 'flex',
-                  }}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* ── DESCRIPTION STRIP — full width, left-aligned ── */}
-          <div
-            style={{
-              width: `${TOTAL}px`,
-              height: `${DESC_H}px`,
-              background: '#f0f0f0',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              padding: '0 24px',
-              gap: '4px',
-            }}
-          >
-            {podcastName ? (
+              </div>
               <div
                 style={{
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '4px',
-                  color: '#aaa',
-                  lineHeight: 1,
+                  fontSize: '16px',
+                  color: 'rgba(255,255,255,0.6)',
                 }}
               >
-                {podcastName}
+                A Magyar Podcast Gyűjtő
               </div>
-            ) : null}
-            {description ? (
-              <div
-                style={{
-                  fontSize: '22px',
-                  fontWeight: 500,
-                  color: '#1a1a1a',
-                  lineHeight: 1.3,
-                  overflow: 'hidden',
-                }}
-              >
-                {description}
-              </div>
-            ) : null}
+            </div>
           </div>
         </div>
       ),
-      { width: TOTAL, height: TOTAL }
+      { width: 1200, height: 630 }
     );
   } catch (e) {
     console.error('OG image error:', e);
