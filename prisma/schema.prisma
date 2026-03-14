@@ -9,26 +9,25 @@ datasource db {
 }
 
 model Podcast {
-  id            String   @id @default(cuid())
-  title         String
-  slug          String?  @unique
-  isActive      Boolean  @default(true)
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  author         String?
+  websiteUrl     String?
+  feedUrl        String    @unique
+  imageUrl       String?
+  language       String?   @default("hu")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastCheckedAt  DateTime  @default(now())
+  category       String?   @default("Egyéb")
+  lastError      String?
+  slug           String?   @unique
   bannerImageUrl String?
-  isFeatured     Boolean  @default(false)
-  description   String?
-  author        String?
-  feedUrl       String   @unique
-  imageUrl      String?
-  websiteUrl    String?
-  language      String?  @default("hu")
-  category      String?  @default("Egyéb")
-  lastCheckedAt DateTime @default(now())
-  nextCheckAt   DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  lastError     String?
-
-  episodes      Episode[]
+  isActive       Boolean   @default(true)
+  isFeatured     Boolean   @default(false)
+  nextCheckAt    DateTime  @default(now())
+  episodes       Episode[]
 
   @@index([category])
   @@index([isActive])
@@ -39,31 +38,31 @@ model Podcast {
 model Episode {
   id            String   @id @default(cuid())
   podcastId     String
-  podcast       Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
-  guid          String 
+  guid          String
   title         String
   description   String?
-  pubDate       DateTime 
-  enclosureUrl  String 
-  duration      Int? 
+  pubDate       DateTime
+  enclosureUrl  String
+  duration      Int?
   episodeNumber Int?
-  imageUrl      String? 
+  imageUrl      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  podcast       Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
 
   @@unique([podcastId, guid])
   @@index([pubDate])
 }
 
 model Category {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  sortOrder Int      @default(0)
+  id        String @id @default(cuid())
+  name      String @unique
+  sortOrder Int    @default(0)
 }
 
 model Suggestion {
   id        String   @id @default(cuid())
-  content   String   
+  content   String
   ipAddress String?  @default("unknown")
   createdAt DateTime @default(now())
 }

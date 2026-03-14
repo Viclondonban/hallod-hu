@@ -37,10 +37,18 @@ export async function generateMetadata(
   const BASE = 'https://www.hallod.hu';
 
   // Helper: build the styled OG image URL
-  function ogImageUrl(title: string, podcastTitle: string, image: string | null | undefined): string {
+  function ogImageUrl(
+    title: string,
+    podcastTitle: string,
+    image: string | null | undefined,
+    desc: string,
+    id: string,
+  ): string {
     const u = new URL('/api/og', BASE);
     u.searchParams.set('title', title);
     u.searchParams.set('podcast', podcastTitle);
+    u.searchParams.set('desc', desc.slice(0, 100)); // keep URL short; route handles display
+    u.searchParams.set('id', id);
     if (image) u.searchParams.set('image', image);
     return u.toString();
   }
@@ -49,10 +57,11 @@ export async function generateMetadata(
   if (ep) {
     const episode = await prisma.episode.findUnique({ where: { id: ep } });
     if (episode) {
+      // Priority: episode art → podcast channel art → no image (route shows solid colour)
       const coverImage = episode.imageUrl || podcast.imageUrl;
       const description = stripHtml(episode.description)?.slice(0, 200) || '';
       const url = `${BASE}/${slug}?ep=${ep}`;
-      const ogImg = ogImageUrl(episode.title, podcast.title, coverImage);
+      const ogImg = ogImageUrl(episode.title, podcast.title, coverImage, description, episode.id);
       return {
         title: `${episode.title} – ${podcast.title} | hallod.hu`,
         description,
@@ -61,7 +70,7 @@ export async function generateMetadata(
           description,
           url,
           siteName: 'hallod.hu – A Magyar Podcast Gyűjtő',
-          images: [{ url: ogImg, width: 1200, height: 630, alt: episode.title }],
+          images: [{ url: ogImg, width: 1200, height: 1200, alt: episode.title }],
           type: 'website',
           locale: 'hu_HU',
         },
@@ -75,10 +84,10 @@ export async function generateMetadata(
     }
   }
 
-  // Default: podcast-level OG tags (also use the styled card)
+  // Default: podcast-level OG tags
   const description = podcast.description?.slice(0, 200) || 'Magyar podcast csatorna a hallod.hu-n';
   const url = `${BASE}/${slug}`;
-  const ogImg = ogImageUrl(podcast.title, podcast.title, podcast.imageUrl);
+  const ogImg = ogImageUrl(podcast.title, podcast.title, podcast.imageUrl, description, podcast.id);
   return {
     title: `${podcast.title} – hallod.hu`,
     description,
@@ -87,7 +96,7 @@ export async function generateMetadata(
       description,
       url,
       siteName: 'hallod.hu – A Magyar Podcast Gyűjtő',
-      images: [{ url: ogImg, width: 1200, height: 630, alt: podcast.title }],
+      images: [{ url: ogImg, width: 1200, height: 1200, alt: podcast.title }],
       type: 'website',
       locale: 'hu_HU',
     },

@@ -3,137 +3,170 @@ import type { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
+// Brand colour palette — picked deterministically from episode/podcast ID
+const COLORS = ['#2b946b', '#af2d42', '#437aac', '#0cc0df', '#92d1b0', '#ff5757'];
+
+function pickColor(id: string): string {
+  const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return COLORS[hash % COLORS.length];
+}
+
+/*
+  Card layout — 1200×1200px:
+  ┌────────────────────────────────┐
+  │ S │                            │  ← top row: 1200×1100
+  │ P │   COVER ART  1100×1100     │    spine: 100px wide, accent colour
+  │ I │                            │    cover: 1100×1100 (perfect square)
+  │ N │                            │
+  │ E │                            │
+  ├───┴────────────────────────────┤
+  │  DESCRIPTION STRIP  1200×100  │
+  └────────────────────────────────┘
+*/
+
+const TOTAL  = 1200;
+const SPINE  = 100;  // spine width = description height (so cover = 1100×1100, perfectly square)
+const COVER  = 1100;
+const DESC_H = 100;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const title   = searchParams.get('title')   ?? 'Magyar Podcast';
-    const podcast = searchParams.get('podcast') ?? 'hallod.hu';
-    const imageUrl = searchParams.get('image');
+    const title       = searchParams.get('title')   ?? 'Magyar Podcast';
+    const podcastName = searchParams.get('podcast') ?? '';
+    const imageUrl    = searchParams.get('image')   ?? null;
+    const description = searchParams.get('desc')    ?? '';
+    const id          = searchParams.get('id')      ?? title;
 
-    // Fetch and base64-encode the cover art so it renders without CORS issues
-    let coverSrc: string | undefined;
-    if (imageUrl) {
-      try {
-        const res  = await fetch(imageUrl);
-        const buf  = await res.arrayBuffer();
-        const uint8 = new Uint8Array(buf);
-        let binary = '';
-        for (let i = 0; i < uint8.length; i++) {
-          binary += String.fromCharCode(uint8[i]);
-        }
-        const mime = res.headers.get('content-type') ?? 'image/jpeg';
-        coverSrc = `data:${mime};base64,${btoa(binary)}`;
-      } catch {
-        coverSrc = undefined;
-      }
-    }
-
-    // Scale font size based on title length
-    const fontSize = title.length > 100 ? 26 : title.length > 70 ? 30 : title.length > 45 ? 36 : 42;
+    const accentColor = pickColor(id);
 
     return new ImageResponse(
       (
         <div
           style={{
             display: 'flex',
-            width: '1200px',
-            height: '630px',
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+            flexDirection: 'column',
+            width: `${TOTAL}px`,
+            height: `${TOTAL}px`,
+            background: '#f0f0f0',
           }}
         >
-          {/* Left: square cover art */}
+          {/* ── TOP ROW: spine + cover ── */}
           <div
             style={{
               display: 'flex',
-              width: '630px',
-              height: '630px',
-              flexShrink: 0,
-              overflow: 'hidden',
+              flexDirection: 'row',
+              width: `${TOTAL}px`,
+              height: `${COVER}px`,
             }}
           >
-            {coverSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={coverSrc}
-                alt=""
-                width={630}
-                height={630}
-                style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  background: '#2b946b',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '120px',
-                }}
-              >
-                🎧
-              </div>
-            )}
-          </div>
-
-          {/* Right: text content */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              padding: '56px 52px',
-              flex: 1,
-              justifyContent: 'space-between',
-            }}
-          >
-            {/* Podcast name */}
+            {/* SPINE — accent colour with "hallod.hu" rotated */}
             <div
               style={{
-                color: 'rgba(255,255,255,0.5)',
-                fontSize: '18px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '3px',
+                width: `${SPINE}px`,
+                height: `${COVER}px`,
+                background: accentColor,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              {podcast}
-            </div>
-
-            {/* Episode title */}
-            <div
-              style={{
-                color: '#ffffff',
-                fontSize: `${fontSize}px`,
-                fontWeight: 800,
-                lineHeight: 1.25,
-              }}
-            >
-              {title}
-            </div>
-
-            {/* hallod.hu branding */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div
+              <span
                 style={{
-                  color: '#ffffff',
-                  fontSize: '26px',
-                  fontWeight: 800,
-                  letterSpacing: '-0.5px',
+                  fontSize: '30px',
+                  fontWeight: 700,
+                  color: 'rgba(255,255,255,0.92)',
+                  letterSpacing: '10px',
+                  textTransform: 'lowercase',
+                  whiteSpace: 'nowrap',
+                  transform: 'rotate(-90deg)',
+                  display: 'block',
                 }}
               >
                 hallod.hu
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>
-                A Magyar Podcast Gyűjtő
-              </div>
+              </span>
             </div>
+
+            {/* COVER ART — 1100×1100, always square */}
+            <div
+              style={{
+                width: `${COVER}px`,
+                height: `${COVER}px`,
+                overflow: 'hidden',
+                display: 'flex',
+              }}
+            >
+              {imageUrl ? (
+                // next/og fetches remote images server-side — no CORS issue
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imageUrl}
+                  width={COVER}
+                  height={COVER}
+                  style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                  alt=""
+                />
+              ) : (
+                // Last resort — no artwork at all
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    background: accentColor,
+                    display: 'flex',
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* ── DESCRIPTION STRIP — full width, left-aligned ── */}
+          <div
+            style={{
+              width: `${TOTAL}px`,
+              height: `${DESC_H}px`,
+              background: '#f0f0f0',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              padding: '0 24px',
+              gap: '4px',
+            }}
+          >
+            {podcastName ? (
+              <div
+                style={{
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '4px',
+                  color: '#aaa',
+                  lineHeight: 1,
+                }}
+              >
+                {podcastName}
+              </div>
+            ) : null}
+            {description ? (
+              <div
+                style={{
+                  fontSize: '22px',
+                  fontWeight: 500,
+                  color: '#1a1a1a',
+                  lineHeight: 1.3,
+                  overflow: 'hidden',
+                }}
+              >
+                {description}
+              </div>
+            ) : null}
           </div>
         </div>
       ),
-      { width: 1200, height: 630 }
+      { width: TOTAL, height: TOTAL }
     );
-  } catch {
+  } catch (e) {
+    console.error('OG image error:', e);
     return new Response('Failed to generate image', { status: 500 });
   }
 }
