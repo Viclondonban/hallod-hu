@@ -4,9 +4,8 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import ShareButton from './share-button';
-import EpisodePlayer from './episode-player';
 import EpisodeScroller from './episode-scroller';
+import EpisodeList from './episode-list';
 
 // Initialize Prisma Client to talk to the database
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
@@ -130,30 +129,32 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
     notFound(); 
   }
 
-  // 2. Fetch all episodes for this podcast, sorted by newest
-  const episodes = await prisma.episode.findMany({
-    where: { podcastId: podcast.id }, // We still use the internal ID to find its episodes!
-    orderBy: { pubDate: 'desc' },
-  });
+  // 2. Fetch first 20 episodes + total count in parallel
+  const [initialEpisodes, totalCount] = await Promise.all([
+    prisma.episode.findMany({
+      where: { podcastId: podcast.id },
+      orderBy: [{ pubDate: 'desc' }, { id: 'desc' }],
+      take: 20,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        pubDate: true,
+        duration: true,
+        imageUrl: true,
+        enclosureUrl: true,
+      },
+    }),
+    prisma.episode.count({ where: { podcastId: podcast.id } }),
+  ]);
 
-  console.log(`Found ${episodes.length} episodes for ${podcast.title}.`);
+  // Serialize dates — Date objects can't cross the server/client boundary
+  const serializedEpisodes = initialEpisodes.map(ep => ({
+    ...ep,
+    pubDate: ep.pubDate.toISOString(),
+  }));
 
-  // Helper to format dates nicely (e.g., "2023. 10. 27.")
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
-  };
-
-  // Helper to format duration (seconds -> "MM:SS" or "HH:MM:SS")
-  const formatDuration = (seconds: number | null) => {
-    if (!seconds) return '';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  console.log(`Loaded ${initialEpisodes.length} of ${totalCount} episodes for ${podcast.title}.`);
 
   return (
     <main className="min-h-screen bg-gray-100">
@@ -181,7 +182,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
                 fill
                 sizes="(max-width: 768px) 100vw, 288px"
                 className="object-cover"
-                unoptimized
+                priority
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
@@ -195,7 +196,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
-              <span>{episodes.length} Episodes</span>
+              <span>{totalCount} epizód</span>
             </div>
             <p className="text-gray-700 leading-relaxed text-sm md:text-base pr-4">
               {podcast.description}
@@ -208,73 +209,18 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
           <EpisodeScroller />
         </Suspense>
 
-        {/* Episode List */}
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">All Episodes ({episodes.length})</h2>
-        <div className="bg-white rounded-lg shadow-sm divide-y divide-gray-200">
-          {episodes.length === 0 && (
-            <div className="p-12 text-center text-gray-500">
-              No episodes found for this podcast.
-            </div>
-          )}
-          {episodes.map((episode) => {
-            const coverImage = episode.imageUrl || podcast.imageUrl;
-            return (
-              <div key={episode.id} id={`ep-${episode.id}`} className="p-4 sm:p-5 hover:bg-gray-50 transition-colors group">
-                {/* Content row: thumbnail + meta */}
-                <div className="flex gap-3 sm:gap-4 mb-3">
-                  <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-lg overflow-hidden bg-gray-200 shadow-sm">
-                    {coverImage ? (
-                      <Image
-                        src={coverImage}
-                        alt={episode.title}
-                        width={96}
-                        height={96}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-grow min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-1">
-                      <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">
-                        {episode.title}
-                      </h3>
-                      <div className="flex items-center text-xs text-gray-400 gap-3 flex-shrink-0">
-                        <span>{formatDate(new Date(episode.pubDate))}</span>
-                        {episode.duration && (
-                          <span className="flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {formatDuration(episode.duration)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 line-clamp-2">
-                      {stripHtml(episode.description)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Buttons: side by side on all screen sizes */}
-                <div className="flex flex-row gap-2">
-                  <EpisodePlayer src={episode.enclosureUrl} />
-                  <ShareButton
-                    episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl }}
-                    podcast={{ title: podcast.title, slug: podcast.slug, imageUrl: podcast.imageUrl }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Episode List — client component handles pagination */}
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Epizódok ({totalCount})</h2>
+        <EpisodeList
+          initialEpisodes={serializedEpisodes}
+          totalCount={totalCount}
+          podcastId={podcast.id}
+          podcast={{
+            title: podcast.title,
+            slug: podcast.slug,
+            imageUrl: podcast.imageUrl,
+          }}
+        />
       </div>
     </main>
   );
