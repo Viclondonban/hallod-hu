@@ -6,8 +6,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
 
-  // Use the Vercel URL if it exists, otherwise fallback to localhost for dev
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  // Derive base URL from the incoming request so it works on any host (Railway, local, etc.)
+  // Env var override available for edge cases
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
 
   if (code) {
     const cookieStore = await cookies();
