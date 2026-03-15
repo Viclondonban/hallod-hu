@@ -6,9 +6,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
 
-  // Derive base URL from the incoming request so it works on any host (Railway, local, etc.)
-  // Env var override available for edge cases
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+  // Build base URL correctly behind Railway's reverse proxy.
+  // Railway sets x-forwarded-host / x-forwarded-proto; request.url only has the internal host.
+  const forwardedHost  = request.headers.get('x-forwarded-host');
+  const forwardedProto = (request.headers.get('x-forwarded-proto') || 'https').split(',')[0].trim();
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (forwardedHost ? `${forwardedProto}://${forwardedHost}` : new URL(request.url).origin);
 
   if (code) {
     const cookieStore = await cookies();
