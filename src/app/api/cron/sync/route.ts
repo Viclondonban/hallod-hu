@@ -22,8 +22,8 @@ const parser = new Parser({
 // scan the full back-catalogue on every run.
 const MAX_ITEMS_PER_FEED = 20;
 
-const MIN_CHECK_HOURS = 12;
-const MAX_CHECK_HOURS = 24 * 30;
+const MIN_CHECK_HOURS = 2;   // check at minimum every 2 hours
+const MAX_CHECK_HOURS = 24;  // check at maximum every 24 hours
 
 async function calculateNextCheckHours(podcastId: string): Promise<number> {
   const recentEpisodes = await prisma.episode.findMany({
