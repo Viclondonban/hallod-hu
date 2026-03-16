@@ -18,8 +18,8 @@ function stripHtml(html: string | null | undefined): string {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-// Cache for 60 seconds — matches the home page so episode counts stay in sync
-export const revalidate = 60;
+// Cache for 30 seconds — short enough to show new episodes promptly
+export const revalidate = 30;
 
 export async function generateMetadata(
   { params, searchParams }: {
