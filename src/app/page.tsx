@@ -7,8 +7,9 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// ⚡ SET TO 0 TO FORCE INSTANT UPDATES. Change to 3600 later for performance.
-export const revalidate = 60; 
+// Force server-side rendering on every request — avoids DB connection
+// exhaustion during build (Next.js 47-worker static generation)
+export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   // 1. Fetch the Featured Podcast 
