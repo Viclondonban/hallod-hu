@@ -41,11 +41,15 @@ const parser = new Parser({
   },
 });
 
+// Process at most this many items per feed — older episodes are unlikely to
+// be missing images/durations, and scanning everything causes Railway timeouts.
+const MAX_BACKFILL_ITEMS = 50;
+
 async function backfillPodcast(podcast: { id: string; title: string; feedUrl: string }) {
   const feed = await parser.parseURL(podcast.feedUrl);
   let updated = 0;
 
-  for (const item of feed.items) {
+  for (const item of feed.items.slice(0, MAX_BACKFILL_ITEMS)) {
     const audioUrl = item.enclosure?.url || item.link;
     const guid = item.guid || audioUrl;
     if (!guid) continue;
