@@ -1,11 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import EpisodeScroller from './episode-scroller';
 import EpisodeList from './episode-list';
+import PodcastCover from './podcast-cover';
 
 // Initialize Prisma Client to talk to the database
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
@@ -176,14 +176,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
           {/* Cover Art */}
           <div className="w-full md:w-64 lg:w-72 flex-shrink-0 aspect-square bg-gray-200 rounded-lg overflow-hidden shadow-sm relative">
             {podcast.imageUrl ? (
-              <Image
-                src={podcast.imageUrl}
-                alt={podcast.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 288px"
-                className="object-cover"
-                priority
-              />
+              <PodcastCover src={podcast.imageUrl} alt={podcast.title} />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
             )}
@@ -199,7 +192,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
               <span>{totalCount} epizód</span>
             </div>
             <p className="text-gray-700 leading-relaxed text-sm md:text-base pr-4">
-              {podcast.description}
+              {stripHtml(podcast.description)}
             </p>
           </div>
         </div>
