@@ -23,7 +23,7 @@ const parser = new Parser({
 const MAX_ITEMS_PER_FEED = 20;
 
 const MIN_CHECK_HOURS = 0.5; // check at minimum every 30 minutes
-const MAX_CHECK_HOURS = 24;  // check at maximum every 24 hours
+const MAX_CHECK_HOURS = 4;   // check at maximum every 4 hours — worst-case lag is ~4h15m
 
 async function calculateNextCheckHours(podcastId: string): Promise<number> {
   const recentEpisodes = await prisma.episode.findMany({
@@ -33,7 +33,7 @@ async function calculateNextCheckHours(podcastId: string): Promise<number> {
     select: { pubDate: true },
   });
 
-  if (recentEpisodes.length < 2) return 48;
+  if (recentEpisodes.length < 2) return MAX_CHECK_HOURS;
 
   const intervals: number[] = [];
   for (let i = 0; i < recentEpisodes.length - 1; i++) {
@@ -41,11 +41,13 @@ async function calculateNextCheckHours(podcastId: string): Promise<number> {
     if (diffMs > 0) intervals.push(diffMs);
   }
 
-  if (intervals.length === 0) return 48;
+  if (intervals.length === 0) return MAX_CHECK_HOURS;
 
   const avgMs = intervals.reduce((a, b) => a + b, 0) / intervals.length;
   const avgHours = avgMs / (1000 * 60 * 60);
-  return Math.min(Math.max(avgHours * 0.8, MIN_CHECK_HOURS), MAX_CHECK_HOURS);
+  // Check at half the average publish interval — catches episodes within half
+  // the typical cadence, capped to MAX so even slow podcasts get checked regularly
+  return Math.min(Math.max(avgHours * 0.5, MIN_CHECK_HOURS), MAX_CHECK_HOURS);
 }
 
 async function syncPodcast(podcast: { id: string; title: string; feedUrl: string }) {
