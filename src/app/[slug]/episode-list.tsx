@@ -5,6 +5,7 @@ import Image from 'next/image';
 import EpisodePlayer from './episode-player';
 import ShareButton from './share-button';
 import { fetchMoreEpisodes, type SerializedEpisode } from './actions';
+import { usePlayer } from '@/context/player-context';
 
 interface Podcast {
   title: string;
@@ -65,9 +66,27 @@ function stripHtml(html: string | null | undefined): string {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function NowPlayingBars() {
+  return (
+    <span className="flex items-end gap-[2px] h-4 flex-shrink-0" aria-label="Lejátszás alatt">
+      {[1, 2, 3].map((i) => (
+        <span
+          key={i}
+          className="w-[3px] bg-green-500 rounded-sm"
+          style={{
+            height: `${i === 2 ? '100%' : '60%'}`,
+            animation: `nowplaying 0.8s ease-in-out ${i * 0.15}s infinite alternate`,
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
 export default function EpisodeList({ initialEpisodes, totalCount, podcastId, podcast }: Props) {
   const [episodes, setEpisodes] = useState<SerializedEpisode[]>(initialEpisodes);
   const [isPending, startTransition] = useTransition();
+  const { currentEpisode, isPlaying } = usePlayer();
 
   const hasMore = episodes.length < totalCount;
   const last = episodes[episodes.length - 1];
@@ -90,19 +109,22 @@ export default function EpisodeList({ initialEpisodes, totalCount, podcastId, po
         )}
         {episodes.map((episode) => {
           const coverImage = episode.imageUrl || podcast.imageUrl;
+          const isActive = currentEpisode?.id === episode.id;
+          const isCurrentlyPlaying = isActive && isPlaying;
           return (
             <div
               key={episode.id}
               id={`ep-${episode.id}`}
-              className="p-4 sm:p-5 hover:bg-gray-50 transition-colors group"
+              className={`p-4 sm:p-5 transition-colors group ${isActive ? 'bg-green-50' : 'hover:bg-gray-50'}`}
             >
               {/* Content row: thumbnail + meta */}
               <div className="flex gap-3 sm:gap-4 mb-3">
                 <EpisodeThumbnail src={coverImage} alt={episode.title} />
                 <div className="flex-grow min-w-0">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-1">
-                    <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">
+                    <h3 className={`text-base font-semibold leading-snug flex items-center gap-2 ${isActive ? 'text-green-700' : 'text-gray-900 group-hover:text-blue-600 transition-colors'}`}>
                       {episode.title}
+                      {isCurrentlyPlaying && <NowPlayingBars />}
                     </h3>
                     <div className="flex items-center text-xs text-gray-400 gap-3 flex-shrink-0">
                       <span>{formatDate(episode.pubDate)}</span>
@@ -124,7 +146,15 @@ export default function EpisodeList({ initialEpisodes, totalCount, podcastId, po
 
               {/* Buttons */}
               <div className="flex flex-row gap-2">
-                <EpisodePlayer src={episode.enclosureUrl} />
+                {episode.enclosureUrl && (
+                  <EpisodePlayer episode={{
+                    id: episode.id,
+                    src: episode.enclosureUrl,
+                    title: episode.title,
+                    podcastTitle: podcast.title,
+                    coverUrl: coverImage,
+                  }} />
+                )}
                 <ShareButton
                   episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl }}
                   podcast={{ title: podcast.title, slug: podcast.slug, imageUrl: podcast.imageUrl }}

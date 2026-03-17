@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
-import Footer from "./footer"; // Assuming footer.tsx is in src/app/
+import Footer from "./footer";
+import { PlayerProvider } from "@/context/player-context";
+import PersistentPlayer from "@/components/persistent-player";
 // If you have a Header or Banner component, import it here too:
 // import Banner from "./banner"; 
 
@@ -48,13 +50,14 @@ export default function RootLayout({
   return (
     <html lang="hu">
       <body className={inter.className}>
-        {/* If you have a global Header/Banner, place it here */}
-        
-        <main className="min-h-screen">
-          {children}
-        </main>
+        <PlayerProvider>
+          <main className="min-h-screen pb-20">
+            {children}
+          </main>
 
-        <Footer /> 
+          <Footer />
+          <PersistentPlayer />
+        </PlayerProvider>
 
         {/* --- GOOGLE ANALYTICS (GA4) --- */}
         {process.env.NEXT_PUBLIC_GA_ID && (
