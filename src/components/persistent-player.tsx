@@ -151,12 +151,25 @@ export default function PersistentPlayer() {
       if (!audio) return;
       audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + (details.seekOffset ?? 15));
     });
+    // Samsung One UI only shows previoustrack/nexttrack buttons in the notification
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      audio.currentTime = Math.max(0, audio.currentTime - 15);
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + 15);
+    });
 
     return () => {
       navigator.mediaSession.setActionHandler('play', null);
       navigator.mediaSession.setActionHandler('pause', null);
       navigator.mediaSession.setActionHandler('seekbackward', null);
       navigator.mediaSession.setActionHandler('seekforward', null);
+      navigator.mediaSession.setActionHandler('previoustrack', null);
+      navigator.mediaSession.setActionHandler('nexttrack', null);
     };
   }, [currentEpisode, audioRef]);
 
