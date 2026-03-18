@@ -66,6 +66,57 @@ function stripHtml(html: string | null | undefined): string {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+// Strips trailing punctuation that is unlikely to be part of a URL
+function cleanUrl(raw: string): string {
+  return raw.replace(/[.,!?)'";:]+$/, '');
+}
+
+// Renders description text with any embedded URLs turned into numbered links.
+// Duplicate URLs share the same number. Links open in a new tab.
+function DescriptionWithLinks({ html }: { html: string | null | undefined }) {
+  if (!html) return null;
+
+  const text = stripHtml(html);
+
+  // Collect unique URLs in order of appearance
+  const urlToNumber = new Map<string, number>();
+  const rawUrlRegex = /https?:\/\/[^\s]+/g;
+  let m: RegExpExecArray | null;
+  while ((m = rawUrlRegex.exec(text)) !== null) {
+    const url = cleanUrl(m[0]);
+    if (!urlToNumber.has(url)) urlToNumber.set(url, urlToNumber.size + 1);
+  }
+
+  if (urlToNumber.size === 0) return <>{text}</>;
+
+  // Split text around URLs (capture group keeps them in the array)
+  const segments = text.split(/(https?:\/\/[^\s]+)/g);
+
+  return (
+    <>
+      {segments.map((seg, i) => {
+        if (/^https?:\/\//.test(seg)) {
+          const url = cleanUrl(seg);
+          const num = urlToNumber.get(url);
+          return (
+            <a
+              key={i}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-green-600 hover:text-green-700 font-medium whitespace-nowrap"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {` [Link ${num}]`}
+            </a>
+          );
+        }
+        return seg || null;
+      })}
+    </>
+  );
+}
+
 function NowPlayingBars() {
   return (
     <span className="flex items-end gap-[2px] h-4 flex-shrink-0" aria-label="Lejátszás alatt">
@@ -139,7 +190,7 @@ export default function EpisodeList({ initialEpisodes, totalCount, podcastId, po
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 line-clamp-2 md:line-clamp-5">
-                    {stripHtml(episode.description)}
+                    <DescriptionWithLinks html={episode.description} />
                   </p>
                 </div>
               </div>
