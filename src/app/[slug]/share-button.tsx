@@ -8,6 +8,7 @@ interface ShareButtonProps {
     id: string;
     title: string;
     imageUrl: string | null;
+    enclosureUrl: string | null;
   };
   podcast: {
     title: string;
@@ -58,18 +59,16 @@ export default function ShareButton({ episode, podcast }: ShareButtonProps) {
 
   return (
     <>
-      {/* Share trigger button */}
+      {/* Three-dot trigger button */}
       <button
         onClick={() => setIsOpen(true)}
-        title="Megosztás"
-        className="flex-none flex items-center justify-center gap-1.5 py-2 px-2 text-sm font-medium transition-opacity active:opacity-60"
-        style={{ color: '#2b946b' }}
+        title="Műveletek"
+        className="flex items-center justify-center w-9 h-9 rounded-full text-gray-500 hover:bg-gray-100 active:opacity-60 transition-colors"
+        aria-label="Műveletek"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
         </svg>
-        Megosztás
       </button>
 
       {/* Modal overlay */}
@@ -140,7 +139,7 @@ export default function ShareButton({ episode, podcast }: ShareButtonProps) {
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-3 w-full">
+            <div className="flex flex-col gap-2 w-full">
               <button
                 onClick={handleCopy}
                 className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all"
@@ -183,6 +182,21 @@ export default function ShareButton({ episode, podcast }: ShareButtonProps) {
                 </button>
               )}
             </div>
+
+            {/* Download */}
+            {episode.enclosureUrl && (
+              <a
+                href={episode.enclosureUrl}
+                download
+                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-white/10 text-white hover:bg-white/20 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Letöltés
+              </a>
+            )}
 
             {/* Close hint */}
             <p className="text-white/40 text-xs">Kattints bárhova a bezáráshoz</p>

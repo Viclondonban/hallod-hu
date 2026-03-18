@@ -17,7 +17,7 @@ export default function EpisodePlayer({ episode }: EpisodePlayerProps) {
       {/* Mobile: compact pill button */}
       <button
         onClick={() => play(episode)}
-        className={`md:hidden flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+        className={`md:hidden flex items-center justify-center gap-2 w-full px-4 py-2 rounded-full text-sm font-medium transition-all ${
           isThisEpisode
             ? 'bg-gray-900 text-white hover:bg-gray-700'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

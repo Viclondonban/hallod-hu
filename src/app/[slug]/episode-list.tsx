@@ -147,17 +147,19 @@ export default function EpisodeList({ initialEpisodes, totalCount, podcastId, po
               {/* Buttons */}
               <div className="flex flex-row items-center gap-2">
                 {episode.enclosureUrl && (
-                  <EpisodePlayer episode={{
-                    id: episode.id,
-                    src: episode.enclosureUrl,
-                    title: episode.title,
-                    podcastTitle: podcast.title,
-                    coverUrl: coverImage,
-                  }} />
+                  <div className="flex-1 min-w-0">
+                    <EpisodePlayer episode={{
+                      id: episode.id,
+                      src: episode.enclosureUrl,
+                      title: episode.title,
+                      podcastTitle: podcast.title,
+                      coverUrl: coverImage,
+                    }} />
+                  </div>
                 )}
-                <div className="ml-auto flex-shrink-0">
+                <div className="flex-shrink-0">
                   <ShareButton
-                    episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl }}
+                    episode={{ id: episode.id, title: episode.title, imageUrl: episode.imageUrl, enclosureUrl: episode.enclosureUrl }}
                     podcast={{ title: podcast.title, slug: podcast.slug, imageUrl: podcast.imageUrl }}
                   />
                 </div>
