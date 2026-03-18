@@ -230,12 +230,12 @@ export default function PersistentPlayer() {
     setCurrentTime(t);
   }, [audioRef]);
 
+  const handleCoverBroken = useCallback(() => setCoverBroken(true), []);
+
   if (!currentEpisode) return null;
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const remaining = duration > 0 ? duration - currentTime : 0;
-
-  const handleCoverBroken = useCallback(() => setCoverBroken(true), []);
 
   return (
     <>
