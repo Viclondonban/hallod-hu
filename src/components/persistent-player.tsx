@@ -83,6 +83,18 @@ export default function PersistentPlayer() {
       if (currentEpisode && Math.round(audio.currentTime) % 5 === 0) {
         localStorage.setItem(`ep-pos-${currentEpisode.id}`, String(audio.currentTime));
       }
+      // Keep the OS notification in sync — this is what unlocks skip buttons on Android
+      if ('mediaSession' in navigator && isFinite(audio.duration) && audio.duration > 0) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: audio.duration,
+            playbackRate: audio.playbackRate,
+            position: audio.currentTime,
+          });
+        } catch {
+          // setPositionState not supported on this browser/OS — ignore
+        }
+      }
     };
     const onDuration = () => setDuration(isFinite(audio.duration) ? audio.duration : 0);
     const onEnded = () => {
