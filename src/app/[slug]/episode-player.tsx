@@ -47,7 +47,7 @@ export default function EpisodePlayer({ episode }: EpisodePlayerProps) {
   const label = isThisPlaying ? 'Szünet' : isThisEpisode ? 'Folytatás' : 'Lejátszás';
 
   return (
-    <div className={`flex items-center w-full rounded-full text-sm font-medium overflow-hidden ${barBg}`}>
+    <div className={`flex items-center w-full rounded-full text-sm font-medium ${barBg}`}>
 
       {/* Play/pause area — takes all space */}
       <button
