@@ -138,7 +138,7 @@ export default function EpisodeList({ initialEpisodes, totalCount, podcastId, po
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 line-clamp-2">
+                  <p className="text-xs text-gray-500 line-clamp-2 md:line-clamp-4">
                     {stripHtml(episode.description)}
                   </p>
                 </div>
