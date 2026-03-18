@@ -111,6 +111,49 @@ export default function PersistentPlayer() {
     };
   }, [audioRef, currentEpisode]);
 
+  // Media Session API — populates lock screen / notification controls
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentEpisode) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentEpisode.title,
+      artist: currentEpisode.podcastTitle,
+      artwork: currentEpisode.coverUrl
+        ? [{ src: currentEpisode.coverUrl, sizes: '512x512', type: 'image/jpeg' }]
+        : [],
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => {
+      audioRef.current?.play();
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      audioRef.current?.pause();
+    });
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset ?? 15));
+    });
+    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + (details.seekOffset ?? 15));
+    });
+
+    return () => {
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('seekbackward', null);
+      navigator.mediaSession.setActionHandler('seekforward', null);
+    };
+  }, [currentEpisode, audioRef]);
+
+  // Keep the lock screen playback state badge in sync
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  }, [isPlaying]);
+
   // Lock body scroll when overlay is open on mobile
   useEffect(() => {
     if (isOverlayOpen) {
