@@ -59,6 +59,39 @@ function ChevronDownIcon() {
   );
 }
 
+// Defined outside PersistentPlayer so it keeps a stable identity across re-renders,
+// preventing the image from remounting (and flickering) on every timeupdate tick.
+function CoverArt({ coverUrl, title, broken, onBroken, size }: {
+  coverUrl: string | null;
+  title: string;
+  broken: boolean;
+  onBroken: () => void;
+  size: 'sm' | 'lg';
+}) {
+  const dim = size === 'sm' ? 'w-12 h-12' : 'w-56 h-56 sm:w-64 sm:h-64';
+  const rounded = size === 'sm' ? 'rounded-md' : 'rounded-2xl';
+  return (
+    <div className={`${dim} ${rounded} bg-gray-200 overflow-hidden flex-shrink-0 shadow-md`}>
+      {coverUrl && !broken ? (
+        <Image
+          src={coverUrl}
+          alt={title}
+          width={size === 'sm' ? 48 : 256}
+          height={size === 'sm' ? 48 : 256}
+          className="w-full h-full object-cover"
+          onError={onBroken}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-300">
+          <svg className="w-1/3 h-1/3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PersistentPlayer() {
   const { currentEpisode, isPlaying, togglePlay, skip, audioRef } = usePlayer();
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
@@ -141,15 +174,15 @@ export default function PersistentPlayer() {
     navigator.mediaSession.setActionHandler('pause', () => {
       audioRef.current?.pause();
     });
-    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+    navigator.mediaSession.setActionHandler('seekbackward', () => {
       const audio = audioRef.current;
       if (!audio) return;
-      audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset ?? 15));
+      audio.currentTime = Math.max(0, audio.currentTime - 15);
     });
-    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+    navigator.mediaSession.setActionHandler('seekforward', () => {
       const audio = audioRef.current;
       if (!audio) return;
-      audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + (details.seekOffset ?? 15));
+      audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + 15);
     });
     // Samsung One UI only shows previoustrack/nexttrack buttons in the notification
     navigator.mediaSession.setActionHandler('previoustrack', () => {
@@ -202,30 +235,7 @@ export default function PersistentPlayer() {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const remaining = duration > 0 ? duration - currentTime : 0;
 
-  const CoverArt = ({ size }: { size: 'sm' | 'lg' }) => {
-    const dim = size === 'sm' ? 'w-12 h-12' : 'w-56 h-56 sm:w-64 sm:h-64';
-    const rounded = size === 'sm' ? 'rounded-md' : 'rounded-2xl';
-    return (
-      <div className={`${dim} ${rounded} bg-gray-200 overflow-hidden flex-shrink-0 shadow-md`}>
-        {currentEpisode.coverUrl && !coverBroken ? (
-          <Image
-            src={currentEpisode.coverUrl}
-            alt={currentEpisode.title}
-            width={size === 'sm' ? 48 : 256}
-            height={size === 'sm' ? 48 : 256}
-            className="w-full h-full object-cover"
-            onError={() => setCoverBroken(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-300">
-            <svg className="w-1/3 h-1/3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-            </svg>
-          </div>
-        )}
-      </div>
-    );
-  };
+  const handleCoverBroken = useCallback(() => setCoverBroken(true), []);
 
   return (
     <>
@@ -248,7 +258,7 @@ export default function PersistentPlayer() {
             className="flex items-center gap-3 flex-1 min-w-0 text-left md:pointer-events-none"
             aria-label="Részletek megnyitása"
           >
-            <CoverArt size="sm" />
+            <CoverArt size="sm" coverUrl={currentEpisode.coverUrl} title={currentEpisode.title} broken={coverBroken} onBroken={handleCoverBroken} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900 truncate leading-tight">
                 {currentEpisode.title}
@@ -361,7 +371,7 @@ export default function PersistentPlayer() {
         <div className="flex flex-col items-center px-8 pb-10 pt-2 gap-6">
 
           {/* Cover art */}
-          <CoverArt size="lg" />
+          <CoverArt size="lg" coverUrl={currentEpisode.coverUrl} title={currentEpisode.title} broken={coverBroken} onBroken={handleCoverBroken} />
 
           {/* Episode info */}
           <div className="text-center w-full">
