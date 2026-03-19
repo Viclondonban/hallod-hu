@@ -23,7 +23,7 @@ const parser = new Parser({
 const MAX_ITEMS_PER_FEED = 20;
 
 const MIN_CHECK_HOURS = 0.5; // check at minimum every 30 minutes
-const MAX_CHECK_HOURS = 4;   // check at maximum every 4 hours — worst-case lag is ~4h15m
+const MAX_CHECK_HOURS = 2;   // check at maximum every 2 hours — worst-case lag is ~2h15m
 
 async function calculateNextCheckHours(podcastId: string): Promise<number> {
   const recentEpisodes = await prisma.episode.findMany({
