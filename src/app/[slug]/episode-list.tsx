@@ -189,7 +189,11 @@ export default function EpisodeList({ initialEpisodes, totalCount, podcastId, po
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 line-clamp-2 md:line-clamp-5">
+                  <p
+                    className={`text-xs text-gray-500 overflow-hidden transition-[max-height] duration-300 ease-in-out
+                      md:overflow-visible md:max-h-none md:line-clamp-5 md:transition-none
+                      ${isActive ? 'max-h-36' : 'max-h-9 line-clamp-2'}`}
+                  >
                     <DescriptionWithLinks html={episode.description} />
                   </p>
                 </div>
