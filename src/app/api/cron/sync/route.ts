@@ -131,38 +131,43 @@ export async function GET(req: NextRequest) {
       select: { id: true, title: true, feedUrl: true },
     });
 
-    // Fetch all feeds in parallel — total time = slowest single feed, not sum of all
-    const settled = await Promise.allSettled(
-      podcasts.map(podcast => syncPodcast(podcast))
-    );
-
+    // Process feeds in small concurrent batches to avoid exhausting the
+    // Supabase connection pool. All-parallel across 500+ podcasts = hundreds
+    // of simultaneous DB queries = 10 s timeouts.
+    const CONCURRENCY = 8;
     let totalNewEpisodes = 0;
-    const results = await Promise.all(
-      settled.map(async (result, i) => {
-        const podcast = podcasts[i];
+    const results: { title: string; newEpisodes: number; nextCheckHours?: number; error?: string }[] = [];
 
-        if (result.status === 'fulfilled') {
-          totalNewEpisodes += result.value.newEpisodes;
-          return {
-            title: podcast.title,
-            newEpisodes: result.value.newEpisodes,
-            nextCheckHours: result.value.nextCheckHours,
-          };
-        } else {
-          const errorMsg = result.reason instanceof Error
-            ? result.reason.message
-            : String(result.reason);
-          console.error(`Error syncing ${podcast.title}:`, result.reason);
+    for (let i = 0; i < podcasts.length; i += CONCURRENCY) {
+      const batch = podcasts.slice(i, i + CONCURRENCY);
+      const settled = await Promise.allSettled(batch.map(p => syncPodcast(p)));
 
-          await prisma.podcast.update({
-            where: { id: podcast.id },
-            data: { lastError: errorMsg, nextCheckAt: new Date(Date.now() + 6 * 60 * 60 * 1000) },
-          }).catch(() => {});
+      await Promise.all(
+        settled.map(async (result, j) => {
+          const podcast = batch[j];
+          if (result.status === 'fulfilled') {
+            totalNewEpisodes += result.value.newEpisodes;
+            results.push({
+              title: podcast.title,
+              newEpisodes: result.value.newEpisodes,
+              nextCheckHours: result.value.nextCheckHours,
+            });
+          } else {
+            const errorMsg = result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason);
+            console.error(`Error syncing ${podcast.title}:`, result.reason);
 
-          return { title: podcast.title, newEpisodes: 0, error: errorMsg };
-        }
-      })
-    );
+            await prisma.podcast.update({
+              where: { id: podcast.id },
+              data: { lastError: errorMsg, nextCheckAt: new Date(Date.now() + 6 * 60 * 60 * 1000) },
+            }).catch(() => {});
+
+            results.push({ title: podcast.title, newEpisodes: 0, error: errorMsg });
+          }
+        })
+      );
+    }
 
     return NextResponse.json({
       success: true,
