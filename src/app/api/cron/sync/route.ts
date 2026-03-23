@@ -6,9 +6,9 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// 10 second timeout per feed (Railway has no function timeout limit)
+// 5 second timeout per feed — dead/slow feeds fail fast and don't clog batches
 const parser = new Parser({
-  timeout: 10000,
+  timeout: 5000,
   customFields: {
     item: [
       ['itunes:image', 'itunesImage'],
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
     // Process feeds in small concurrent batches to avoid exhausting the
     // Supabase connection pool. All-parallel across 500+ podcasts = hundreds
     // of simultaneous DB queries = 10 s timeouts.
-    const CONCURRENCY = 8;
+    const CONCURRENCY = 25;
     let totalNewEpisodes = 0;
     const results: { title: string; newEpisodes: number; nextCheckHours?: number; error?: string }[] = [];
 
