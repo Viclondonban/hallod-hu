@@ -73,10 +73,12 @@ function cleanUrl(raw: string): string {
 
 // Renders description text with any embedded URLs turned into numbered links.
 // Duplicate URLs share the same number. Links open in a new tab.
-function DescriptionWithLinks({ html }: { html: string | null | undefined }) {
+// If maxChars is set, the plain text is truncated before link processing.
+function DescriptionWithLinks({ html, maxChars }: { html: string | null | undefined; maxChars?: number }) {
   if (!html) return null;
 
-  const text = stripHtml(html);
+  const raw = stripHtml(html);
+  const text = maxChars && raw.length > maxChars ? raw.slice(0, maxChars) + '…' : raw;
 
   // Collect unique URLs in order of appearance
   const urlToNumber = new Map<string, number>();
@@ -189,9 +191,13 @@ export default function EpisodeList({ initialEpisodes, totalCount, podcastId, po
                       )}
                     </div>
                   </div>
+                  {/* Desktop: plain 900-char truncation, no height magic needed */}
+                  <p className="hidden md:block text-xs text-gray-500">
+                    <DescriptionWithLinks html={episode.description} maxChars={900} />
+                  </p>
+                  {/* Mobile: max-height expand when active */}
                   <p
-                    className={`text-xs text-gray-500 overflow-hidden transition-[max-height] duration-300 ease-in-out
-                      md:max-h-none md:line-clamp-5 md:transition-none
+                    className={`md:hidden text-xs text-gray-500 overflow-hidden transition-[max-height] duration-300 ease-in-out
                       ${isActive ? 'max-h-36' : 'max-h-9 line-clamp-2'}`}
                   >
                     <DescriptionWithLinks html={episode.description} />
