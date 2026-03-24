@@ -6,9 +6,9 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// 5 second timeout per feed — dead/slow feeds fail fast and don't clog batches
+// 10 second timeout per feed — Railway→Fireside and similar hosts need this headroom
 const parser = new Parser({
-  timeout: 5000,
+  timeout: 10000,
   customFields: {
     item: [
       ['itunes:image', 'itunesImage'],
