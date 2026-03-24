@@ -6,10 +6,10 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// 10 second timeout per feed — Railway→Fireside and similar hosts need this headroom.
-// User-Agent mimics a real podcast app so CDNs (e.g. Fireside.fm) don't throttle us.
+// 15 second timeout — large feeds (e.g. Fireside.fm at 130KB+) need this from Railway.
+// User-Agent mimics a real podcast app so CDNs don't throttle us.
 const parser = new Parser({
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     'User-Agent': 'AppleCoreMedia/1.0.0.21F79 (iPhone; U; CPU OS 17_5 like Mac OS X)',
     'Accept': 'application/rss+xml, application/xml, text/xml, */*',
