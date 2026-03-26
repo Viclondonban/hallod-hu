@@ -23,6 +23,10 @@ const faqs = [
     a: 'A podcast egy hangos műsor, amit mikor akarsz, ahol akarsz meghallgathatsz. Olyan, mint a rádió – csak te döntöd el, mikor indul és nem kell végighallgatnod a reklámokat. A "podcastek" és "podcastok" ugyanannak a szónak két elfogadott magyar többes száma, tehát mindkettő helyes. Találsz itt podcasteket politikáról, tudományról, pszichológiáról, komédiáról, sportról, gazdaságról – és mindenről, ami között.',
   },
   {
+    q: 'Podkaszt vagy podkeszt? Hogy kell kiejteni magyarul?',
+    a: 'Podkaszt. Az amerikaiak "pádkeszt"-et mondanak, az angolok viszont "podkaszt"-ot – és mivel a magyarban a hasonló jövevényszavak az angol ejtést követik (lásd: "bródkásztingot" mondunk, nem "brédkészting"-et), a helyes magyar kiejtés: podkaszt. Szóval ha valaki podkesztnek mondja, nem baj – mindenki érti –, de a nyelvtanilag következetes változat a podkaszt.',
+  },
+  {
     q: 'Hol találom a legjobb magyar podcasteket?',
     a: 'Nos, éppen itt vagy. A hallod.hu célja, hogy az összes aktív magyar podcast elérhető legyen egy helyen – a nagyon jóktól a kísérleti fázisban lévő egyszemélyesekig. A platform nem rangsorol és nem ítélkezik: te döntöd el, mi a legjobb neked. Az "Aktuális kedvenceink" rovat azért létezik, mert valamit mégiscsak ki kellett emelni a kezdőlapra.',
   },
