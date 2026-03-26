@@ -26,8 +26,10 @@ model Podcast {
   bannerImageUrl String?
   isActive       Boolean   @default(true)
   isFeatured     Boolean   @default(false)
-  nextCheckAt    DateTime  @default(now())
-  episodes       Episode[]
+  nextCheckAt       DateTime  @default(now())
+  feedEtag          String?
+  feedLastModified  String?
+  episodes          Episode[]
 
   @@index([category])
   @@index([isActive])

@@ -6,14 +6,9 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
-// 15 second timeout — large feeds (e.g. Fireside.fm at 130KB+) need this from Railway.
-// User-Agent mimics a real podcast app so CDNs don't throttle us.
+// rss-parser is only used for parseString() now — we do the fetch ourselves
+// so we can intercept headers and handle 304 Not Modified.
 const parser = new Parser({
-  timeout: 15000,
-  headers: {
-    'User-Agent': 'AppleCoreMedia/1.0.0.21F79 (iPhone; U; CPU OS 17_5 like Mac OS X)',
-    'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-  },
   customFields: {
     item: [
       ['itunes:image', 'itunesImage'],
@@ -22,13 +17,18 @@ const parser = new Parser({
   },
 });
 
+const FETCH_HEADERS = {
+  'User-Agent': 'AppleCoreMedia/1.0.0.21F79 (iPhone; U; CPU OS 17_5 like Mac OS X)',
+  'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+};
+
+const FETCH_TIMEOUT_MS = 15000;
+
 // Only check the N most recent items from each feed.
-// Running every 15 min means at most 1-2 new episodes exist — no need to
-// scan the full back-catalogue on every run.
 const MAX_ITEMS_PER_FEED = 20;
 
-const MIN_CHECK_HOURS = 0.5; // check at minimum every 30 minutes
-const MAX_CHECK_HOURS = 2;   // check at maximum every 2 hours — worst-case lag is ~2h15m
+const MIN_CHECK_HOURS = 0.5;
+const MAX_CHECK_HOURS = 2;
 
 async function calculateNextCheckHours(podcastId: string): Promise<number> {
   const recentEpisodes = await prisma.episode.findMany({
@@ -50,16 +50,56 @@ async function calculateNextCheckHours(podcastId: string): Promise<number> {
 
   const avgMs = intervals.reduce((a, b) => a + b, 0) / intervals.length;
   const avgHours = avgMs / (1000 * 60 * 60);
-  // Check at half the average publish interval — catches episodes within half
-  // the typical cadence, capped to MAX so even slow podcasts get checked regularly
   return Math.min(Math.max(avgHours * 0.5, MIN_CHECK_HOURS), MAX_CHECK_HOURS);
 }
 
-async function syncPodcast(podcast: { id: string; title: string; feedUrl: string }) {
-  const feed = await parser.parseURL(podcast.feedUrl);
+async function syncPodcast(podcast: {
+  id: string;
+  title: string;
+  feedUrl: string;
+  feedEtag: string | null;
+  feedLastModified: string | null;
+}) {
+  // Build conditional request headers — if we have a cached validator, send it.
+  // The server replies with 304 Not Modified (no body) if nothing changed,
+  // saving the full feed download (~50-130KB) on the vast majority of checks.
+  const reqHeaders: Record<string, string> = { ...FETCH_HEADERS };
+  if (podcast.feedEtag) reqHeaders['If-None-Match'] = podcast.feedEtag;
+  else if (podcast.feedLastModified) reqHeaders['If-Modified-Since'] = podcast.feedLastModified;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(podcast.feedUrl, { headers: reqHeaders, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  // 304 — feed unchanged since last check. Just bump lastCheckedAt and move on.
+  if (response.status === 304) {
+    const nextCheckHours = await calculateNextCheckHours(podcast.id);
+    const nextCheckAt = new Date(Date.now() + nextCheckHours * 60 * 60 * 1000);
+    await prisma.podcast.update({
+      where: { id: podcast.id },
+      data: { lastCheckedAt: new Date(), nextCheckAt, lastError: null },
+    });
+    return { newEpisodes: 0, nextCheckHours: Math.round(nextCheckHours), skipped: true };
+  }
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+  }
+
+  // Save ETag / Last-Modified from the response so next check can be conditional.
+  const newEtag = response.headers.get('etag');
+  const newLastModified = response.headers.get('last-modified');
+
+  const xml = await response.text();
+  const feed = await parser.parseString(xml);
   let newEpisodes = 0;
 
-  // Only look at the most recent items — older ones are already in the DB
   const recentItems = feed.items.slice(0, MAX_ITEMS_PER_FEED);
 
   for (const item of recentItems) {
@@ -67,7 +107,6 @@ async function syncPodcast(podcast: { id: string; title: string; feedUrl: string
     const guid = item.guid || audioUrl;
     if (!audioUrl || !item.title || !guid) continue;
 
-    // Extract episode-level cover art from itunes:image (href attribute or plain string)
     const itemAsUnknown = item as unknown as Record<string, unknown>;
     const rawImage = itemAsUnknown.itunesImage;
     const episodeImageUrl: string | null =
@@ -75,7 +114,6 @@ async function syncPodcast(podcast: { id: string; title: string; feedUrl: string
         ? (rawImage as { $?: { href?: string } }).$?.href
         : typeof rawImage === 'string' ? rawImage : null) ?? null;
 
-    // Parse duration: itunes:duration can be "HH:MM:SS", "MM:SS", or plain seconds
     const rawDuration = itemAsUnknown.itunesDuration;
     let durationSeconds: number | null = null;
     if (rawDuration) {
@@ -85,11 +123,9 @@ async function syncPodcast(podcast: { id: string; title: string; feedUrl: string
       else if (parts.length === 1 && !isNaN(parts[0])) durationSeconds = parts[0];
     }
 
-    // Single upsert instead of findFirst + create — half the DB roundtrips
     const result = await prisma.episode.upsert({
       where: { podcastId_guid: { podcastId: podcast.id, guid } },
       update: {
-        // Update image and duration in case they change after initial ingest
         ...(episodeImageUrl && { imageUrl: episodeImageUrl }),
         ...(durationSeconds && { duration: durationSeconds }),
       },
@@ -105,7 +141,6 @@ async function syncPodcast(podcast: { id: string; title: string; feedUrl: string
       },
     });
 
-    // createdAt === updatedAt means it was just created
     if (result.createdAt.getTime() === result.updatedAt.getTime()) {
       newEpisodes++;
     }
@@ -116,10 +151,17 @@ async function syncPodcast(podcast: { id: string; title: string; feedUrl: string
 
   await prisma.podcast.update({
     where: { id: podcast.id },
-    data: { lastCheckedAt: new Date(), nextCheckAt, lastError: null },
+    data: {
+      lastCheckedAt: new Date(),
+      nextCheckAt,
+      lastError: null,
+      // Store validators for the next conditional request
+      ...(newEtag !== null && { feedEtag: newEtag }),
+      ...(newLastModified !== null && { feedLastModified: newLastModified }),
+    },
   });
 
-  return { newEpisodes, nextCheckHours: Math.round(nextCheckHours) };
+  return { newEpisodes, nextCheckHours: Math.round(nextCheckHours), skipped: false };
 }
 
 export async function GET(req: NextRequest) {
@@ -129,19 +171,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // No take() limit — Railway has no function timeout, so process all due podcasts
     const podcasts = await prisma.podcast.findMany({
       where: { isActive: true, nextCheckAt: { lte: new Date() } },
       orderBy: { nextCheckAt: 'asc' },
-      select: { id: true, title: true, feedUrl: true },
+      select: { id: true, title: true, feedUrl: true, feedEtag: true, feedLastModified: true },
     });
 
-    // Process feeds in small concurrent batches to avoid exhausting the
-    // Supabase connection pool. All-parallel across 500+ podcasts = hundreds
-    // of simultaneous DB queries = 10 s timeouts.
     const CONCURRENCY = 25;
     let totalNewEpisodes = 0;
-    const results: { title: string; newEpisodes: number; nextCheckHours?: number; error?: string }[] = [];
+    let totalSkipped = 0;
+    const results: {
+      title: string;
+      newEpisodes: number;
+      nextCheckHours?: number;
+      skipped?: boolean;
+      error?: string;
+    }[] = [];
 
     for (let i = 0; i < podcasts.length; i += CONCURRENCY) {
       const batch = podcasts.slice(i, i + CONCURRENCY);
@@ -152,10 +197,12 @@ export async function GET(req: NextRequest) {
           const podcast = batch[j];
           if (result.status === 'fulfilled') {
             totalNewEpisodes += result.value.newEpisodes;
+            if (result.value.skipped) totalSkipped++;
             results.push({
               title: podcast.title,
               newEpisodes: result.value.newEpisodes,
               nextCheckHours: result.value.nextCheckHours,
+              skipped: result.value.skipped,
             });
           } else {
             const errorMsg = result.reason instanceof Error
@@ -176,7 +223,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Processed ${podcasts.length} podcasts. Added ${totalNewEpisodes} new episodes.`,
+      message: `Processed ${podcasts.length} podcasts — ${totalSkipped} unchanged (304), ${podcasts.length - totalSkipped} downloaded. Added ${totalNewEpisodes} new episodes.`,
       results,
     });
 
