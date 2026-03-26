@@ -19,12 +19,12 @@ const faqs = [
     a: 'A hallod.hu egy magyar podcast gyűjtő – egy hely, ahol megtalálod az összes érdemi magyar nyelvű podcastet. Nincs hírlevél-feliratkozási kényszer, nincs végtelen regisztrációs folyamat, nincs algoritmus, ami a leghangosabb tartalmat tolja az arcodba. Csak a műsorok. Keress, kattints, hallgass.',
   },
   {
-    q: 'Mi az a podcast, mi az a podcastek és podcastok?',
+    q: 'Mi az a podcast, podcast-ek és podcast-ok?',
     a: 'A podcast egy hangos műsor, amit mikor akarsz, ahol akarsz meghallgathatsz. Olyan, mint a rádió – csak te döntöd el, mikor indul és nem kell végighallgatnod a reklámokat. A "podcastek" és "podcastok" ugyanannak a szónak két elfogadott magyar többes száma, tehát mindkettő helyes. Találsz itt podcasteket politikáról, tudományról, pszichológiáról, komédiáról, sportról, gazdaságról – és mindenről, ami között.',
   },
   {
     q: 'Podkaszt vagy podkeszt? Hogy kell kiejteni magyarul?',
-    a: 'Podkaszt. Az amerikaiak "pádkeszt"-et mondanak, az angolok viszont "podkaszt"-ot – és mivel a magyarban a hasonló jövevényszavak az angol ejtést követik (lásd: "bródkásztingot" mondunk, nem "brédkészting"-et), a helyes magyar kiejtés: podkaszt. Szóval ha valaki podkesztnek mondja, nem baj – mindenki érti –, de a nyelvtanilag következetes változat a podkaszt.',
+    a: 'Podkaszt. Az amerikaiak "pádkeszt"-et mondanak, az angolok viszont "podkaszt"-ot – és mivel a magyarban a hasonló jövevényszavak az angol ejtést követik (lásd: "bródkasztingot" mondunk, nem "bródkeszting"-et), a helyes magyar kiejtés: podkaszt. Szóval ha valaki podkesztnek mondja, nem baj – mindenki érti –, de a nyelvtanilag következetes változat a podkaszt.',
   },
   {
     q: 'Hol találom a legjobb magyar podcasteket?',
