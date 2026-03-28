@@ -92,17 +92,50 @@ function CoverArt({ coverUrl, title, broken, onBroken, size }: {
   );
 }
 
+const SPEEDS = [1, 1.25, 1.5, 2, 3];
+
+function SpeedButton({ rate, onCycle }: { rate: number; onCycle: () => void }) {
+  const label = rate === 1 ? '1×' : `${rate}×`;
+  return (
+    <button
+      onClick={onCycle}
+      className="text-xs font-semibold tabular-nums text-gray-500 hover:text-gray-900 transition-colors w-10 text-center"
+      aria-label={`Lejátszási sebesség: ${label}`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function PersistentPlayer() {
   const { currentEpisode, isPlaying, togglePlay, skip, audioRef } = usePlayer();
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [coverBroken, setCoverBroken] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1;
+    return parseFloat(localStorage.getItem('playbackRate') || '1');
+  });
 
   // Reset cover error state when episode changes
   useEffect(() => {
     setCoverBroken(false);
   }, [currentEpisode?.id]);
+
+  // Apply playback rate to audio element and persist it
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = playbackRate;
+    localStorage.setItem('playbackRate', String(playbackRate));
+  }, [playbackRate, audioRef]);
+
+  const cycleSpeed = useCallback(() => {
+    setPlaybackRate(prev => {
+      const idx = SPEEDS.indexOf(prev);
+      return SPEEDS[(idx + 1) % SPEEDS.length];
+    });
+  }, []);
 
   // Attach time tracking listeners to the shared audio element
   useEffect(() => {
@@ -313,6 +346,8 @@ export default function PersistentPlayer() {
               />
               <span className="text-xs text-gray-400 w-10 tabular-nums">−{formatTime(remaining)}</span>
             </div>
+
+            <SpeedButton rate={playbackRate} onCycle={cycleSpeed} />
           </div>
 
           {/* Mobile: just play/pause + expand */}
@@ -400,6 +435,15 @@ export default function PersistentPlayer() {
               <span>−{formatTime(remaining)}</span>
             </div>
           </div>
+
+          {/* Speed */}
+          <button
+            onClick={cycleSpeed}
+            className="text-sm font-semibold tabular-nums text-gray-400 hover:text-gray-700 active:text-gray-900 transition-colors px-4 py-1 rounded-full border border-gray-200 hover:border-gray-300"
+            aria-label={`Lejátszási sebesség: ${playbackRate}×`}
+          >
+            {playbackRate === 1 ? '1×' : `${playbackRate}×`}
+          </button>
 
           {/* Controls */}
           <div className="flex items-center gap-8">
