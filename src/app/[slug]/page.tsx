@@ -1,22 +1,24 @@
-import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { prisma } from '@/lib/prisma';
 import EpisodeScroller from './episode-scroller';
 import EpisodeList from './episode-list';
 import PodcastCover from './podcast-cover';
-
-// Initialize Prisma Client to talk to the database
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Strip HTML tags from descriptions coming from RSS feeds
 function stripHtml(html: string | null | undefined): string {
   if (!html) return '';
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
+
+// Reject obviously-invalid slugs before hitting Prisma. Real podcast slugs are
+// short kebab-case identifiers, so anything with a dot (robots.txt, meta.json,
+// sitemap.xml, .env, wp-login.php…), uppercase letters, or a suspicious length
+// is almost certainly a bot probe. Blocking here stops vuln scanners from
+// driving Postgres traffic.
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,80}$/;
 
 // Cache for 30 seconds — short enough to show new episodes promptly
 export const revalidate = 30;

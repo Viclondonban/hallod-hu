@@ -1,12 +1,8 @@
-import { PrismaClient } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import PodcastList from './podcast-list';
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+import { prisma } from '@/lib/prisma';
 
 // Keep force-dynamic to avoid the 47-worker build-time DB exhaustion issue.
 // unstable_cache below handles response-level caching instead.

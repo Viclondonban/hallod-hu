@@ -1,13 +1,8 @@
 "use server";
 
-import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
-import { headers } from 'next/headers'; // <--- ADD THIS IMPORT
-
-// Initialize Prisma Client
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+import { headers } from 'next/headers';
+import { prisma } from '@/lib/prisma';
 
 // 1. Fetch all podcasts for the manager to display
 export async function getAllPodcasts() {

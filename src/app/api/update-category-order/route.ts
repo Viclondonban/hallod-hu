@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 // --- Auth helper ---
 async function requireAdmin(): Promise<NextResponse | null> {
@@ -33,10 +33,7 @@ async function requireAdmin(): Promise<NextResponse | null> {
   return null;
 }
 
-// Use the shared singleton so we don't create a new connection per request
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
 
 interface CategoryInput {
   id?: string;
