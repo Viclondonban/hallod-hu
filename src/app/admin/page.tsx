@@ -1,14 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { PrismaClient } from '@prisma/client';
 import AdminClientPage from './client-page';
 import { deleteSuggestion } from './actions';
-
-// Initialize Prisma
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +32,10 @@ export default async function AdminPage() {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  // getUser() re-validates the JWT against Supabase servers on every call.
+  // getSession() only reads the cookie and trusts it, which Supabase flags as
+  // insecure for any code path that makes an authorisation decision.
+  const { data: { user } } = await supabase.auth.getUser();
 
   // 📋 THE VIP LIST — configured via ADMIN_EMAILS env var (comma-separated)
   const allowedEmails = (process.env.ADMIN_EMAILS || '')
@@ -45,9 +43,9 @@ export default async function AdminPage() {
     .map(e => e.trim())
     .filter(Boolean);
 
-  // If no session, or the email is NOT on the VIP list, kick them out
-  if (!session || !allowedEmails.includes(session.user?.email || '')) {
-    redirect('/'); 
+  // If no user, or the email is NOT on the VIP list, kick them out
+  if (!user || !allowedEmails.includes(user.email || '')) {
+    redirect('/');
   }
 
   // 1. Fetch data for the existing dashboard

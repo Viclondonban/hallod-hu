@@ -1,22 +1,24 @@
-import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { prisma } from '@/lib/prisma';
 import EpisodeScroller from './episode-scroller';
 import EpisodeList from './episode-list';
 import PodcastCover from './podcast-cover';
-
-// Initialize Prisma Client to talk to the database
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Strip HTML tags from descriptions coming from RSS feeds
 function stripHtml(html: string | null | undefined): string {
   if (!html) return '';
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
+
+// Reject obviously-invalid slugs before hitting Prisma. Real podcast slugs are
+// short kebab-case identifiers, so anything with a dot (robots.txt, meta.json,
+// sitemap.xml, .env, wp-login.php…), uppercase letters, or a suspicious length
+// is almost certainly a bot probe. Blocking here stops vuln scanners from
+// driving Postgres traffic.
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,80}$/;
 
 // Cache for 30 seconds — short enough to show new episodes promptly
 export const revalidate = 30;
@@ -29,6 +31,9 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const { ep } = await searchParams;
+
+  // Short-circuit bot probes before they hit the database
+  if (!SLUG_PATTERN.test(slug)) return {};
 
   const podcast = await prisma.podcast.findUnique({ where: { slug } });
   if (!podcast) return {};
@@ -117,7 +122,11 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
   // Grab the slug from the URL (e.g. "viclondonban")
   const { slug } = await params;
 
-  console.log(`Fetching details for podcast slug: ${slug}...`);
+  // Short-circuit bot probes (robots.txt, meta.json, wp-login.php, …) before
+  // they hit Prisma. Saves a DB round-trip per probe and avoids log noise.
+  if (!SLUG_PATTERN.test(slug)) {
+    notFound();
+  }
 
   // 1. Fetch the Podcast details using the SLUG
   const podcast = await prisma.podcast.findUnique({
@@ -126,7 +135,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
 
   // If the podcast doesn't exist, instantly trigger a 404 page so other routes work normally
   if (!podcast) {
-    notFound(); 
+    notFound();
   }
 
   // 2. Fetch first 20 episodes + total count in parallel
@@ -153,8 +162,6 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
     ...ep,
     pubDate: ep.pubDate.toISOString(),
   }));
-
-  console.log(`Loaded ${initialEpisodes.length} of ${totalCount} episodes for ${podcast.title}.`);
 
   return (
     <main className="min-h-screen bg-gray-100">

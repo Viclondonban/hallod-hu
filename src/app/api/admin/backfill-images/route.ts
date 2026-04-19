@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import Parser from 'rss-parser';
-import { PrismaClient } from '@prisma/client';
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+import { prisma } from '@/lib/prisma';
 
 async function requireAdmin(): Promise<NextResponse | null> {
   const cookieStore = await cookies();
@@ -20,11 +16,14 @@ async function requireAdmin(): Promise<NextResponse | null> {
       },
     }
   );
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+  // getUser() re-validates the JWT against Supabase servers on every call.
+  // getSession() only reads the cookie and trusts it, which Supabase flags as
+  // insecure for any code path that makes an authorisation decision.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   const allowedEmails = (process.env.ADMIN_EMAILS || '')
     .split(',').map(e => e.trim()).filter(Boolean);
-  if (!allowedEmails.includes(session.user?.email || '')) {
+  if (!allowedEmails.includes(user.email || '')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   return null;
