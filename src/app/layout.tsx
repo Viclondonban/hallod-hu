@@ -51,7 +51,7 @@ export default function RootLayout({
     <html lang="hu">
       <body className={inter.className}>
         <PlayerProvider>
-          <main className="min-h-screen pb-20">
+          <main className="min-h-screen pb-20 bg-gray-100">
             {children}
           </main>
 

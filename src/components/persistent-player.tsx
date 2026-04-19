@@ -59,17 +59,83 @@ function ChevronDownIcon() {
   );
 }
 
+// Defined outside PersistentPlayer so it keeps a stable identity across re-renders,
+// preventing the image from remounting (and flickering) on every timeupdate tick.
+function CoverArt({ coverUrl, title, broken, onBroken, size }: {
+  coverUrl: string | null;
+  title: string;
+  broken: boolean;
+  onBroken: () => void;
+  size: 'sm' | 'lg';
+}) {
+  const dim = size === 'sm' ? 'w-12 h-12' : 'w-56 h-56 sm:w-64 sm:h-64';
+  const rounded = size === 'sm' ? 'rounded-md' : 'rounded-2xl';
+  return (
+    <div className={`${dim} ${rounded} bg-gray-200 overflow-hidden flex-shrink-0 shadow-md`}>
+      {coverUrl && !broken ? (
+        <Image
+          src={coverUrl}
+          alt={title}
+          width={size === 'sm' ? 48 : 256}
+          height={size === 'sm' ? 48 : 256}
+          className="w-full h-full object-cover"
+          onError={onBroken}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-300">
+          <svg className="w-1/3 h-1/3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const SPEEDS = [1, 1.25, 1.5, 2, 3];
+
+function SpeedButton({ rate, onCycle }: { rate: number; onCycle: () => void }) {
+  const label = rate === 1 ? '1×' : `${rate}×`;
+  return (
+    <button
+      onClick={onCycle}
+      className="text-xs font-semibold tabular-nums text-gray-500 hover:text-gray-900 transition-colors w-10 text-center"
+      aria-label={`Lejátszási sebesség: ${label}`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function PersistentPlayer() {
   const { currentEpisode, isPlaying, togglePlay, skip, audioRef } = usePlayer();
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [coverBroken, setCoverBroken] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1;
+    return parseFloat(localStorage.getItem('playbackRate') || '1');
+  });
 
   // Reset cover error state when episode changes
   useEffect(() => {
     setCoverBroken(false);
   }, [currentEpisode?.id]);
+
+  // Apply playback rate to audio element and persist it
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = playbackRate;
+    localStorage.setItem('playbackRate', String(playbackRate));
+  }, [playbackRate, audioRef]);
+
+  const cycleSpeed = useCallback(() => {
+    setPlaybackRate(prev => {
+      const idx = SPEEDS.indexOf(prev);
+      return SPEEDS[(idx + 1) % SPEEDS.length];
+    });
+  }, []);
 
   // Attach time tracking listeners to the shared audio element
   useEffect(() => {
@@ -141,15 +207,15 @@ export default function PersistentPlayer() {
     navigator.mediaSession.setActionHandler('pause', () => {
       audioRef.current?.pause();
     });
-    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+    navigator.mediaSession.setActionHandler('seekbackward', () => {
       const audio = audioRef.current;
       if (!audio) return;
-      audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset ?? 15));
+      audio.currentTime = Math.max(0, audio.currentTime - 15);
     });
-    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+    navigator.mediaSession.setActionHandler('seekforward', () => {
       const audio = audioRef.current;
       if (!audio) return;
-      audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + (details.seekOffset ?? 15));
+      audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + 15);
     });
     // Samsung One UI only shows previoustrack/nexttrack buttons in the notification
     navigator.mediaSession.setActionHandler('previoustrack', () => {
@@ -197,35 +263,12 @@ export default function PersistentPlayer() {
     setCurrentTime(t);
   }, [audioRef]);
 
+  const handleCoverBroken = useCallback(() => setCoverBroken(true), []);
+
   if (!currentEpisode) return null;
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const remaining = duration > 0 ? duration - currentTime : 0;
-
-  const CoverArt = ({ size }: { size: 'sm' | 'lg' }) => {
-    const dim = size === 'sm' ? 'w-12 h-12' : 'w-56 h-56 sm:w-64 sm:h-64';
-    const rounded = size === 'sm' ? 'rounded-md' : 'rounded-2xl';
-    return (
-      <div className={`${dim} ${rounded} bg-gray-200 overflow-hidden flex-shrink-0 shadow-md`}>
-        {currentEpisode.coverUrl && !coverBroken ? (
-          <Image
-            src={currentEpisode.coverUrl}
-            alt={currentEpisode.title}
-            width={size === 'sm' ? 48 : 256}
-            height={size === 'sm' ? 48 : 256}
-            className="w-full h-full object-cover"
-            onError={() => setCoverBroken(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-300">
-            <svg className="w-1/3 h-1/3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
-            </svg>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <>
@@ -248,7 +291,7 @@ export default function PersistentPlayer() {
             className="flex items-center gap-3 flex-1 min-w-0 text-left md:pointer-events-none"
             aria-label="Részletek megnyitása"
           >
-            <CoverArt size="sm" />
+            <CoverArt size="sm" coverUrl={currentEpisode.coverUrl} title={currentEpisode.title} broken={coverBroken} onBroken={handleCoverBroken} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900 truncate leading-tight">
                 {currentEpisode.title}
@@ -303,6 +346,8 @@ export default function PersistentPlayer() {
               />
               <span className="text-xs text-gray-400 w-10 tabular-nums">−{formatTime(remaining)}</span>
             </div>
+
+            <SpeedButton rate={playbackRate} onCycle={cycleSpeed} />
           </div>
 
           {/* Mobile: just play/pause + expand */}
@@ -361,7 +406,7 @@ export default function PersistentPlayer() {
         <div className="flex flex-col items-center px-8 pb-10 pt-2 gap-6">
 
           {/* Cover art */}
-          <CoverArt size="lg" />
+          <CoverArt size="lg" coverUrl={currentEpisode.coverUrl} title={currentEpisode.title} broken={coverBroken} onBroken={handleCoverBroken} />
 
           {/* Episode info */}
           <div className="text-center w-full">
@@ -390,6 +435,15 @@ export default function PersistentPlayer() {
               <span>−{formatTime(remaining)}</span>
             </div>
           </div>
+
+          {/* Speed */}
+          <button
+            onClick={cycleSpeed}
+            className="text-sm font-semibold tabular-nums text-gray-400 hover:text-gray-700 active:text-gray-900 transition-colors px-4 py-1 rounded-full border border-gray-200 hover:border-gray-300"
+            aria-label={`Lejátszási sebesség: ${playbackRate}×`}
+          >
+            {playbackRate === 1 ? '1×' : `${playbackRate}×`}
+          </button>
 
           {/* Controls */}
           <div className="flex items-center gap-8">

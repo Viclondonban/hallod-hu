@@ -39,16 +39,17 @@ export default function PodcastList({ podcasts, featuredPodcastId, dbCategories 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // 2. PERFORMANCE UPGRADE: useMemo
-  // This remembers the filtered list so React doesn't have to recalculate 
-  // 1,400 items every single time the screen blinks.
+  // Strips accents so "kek" matches "kék", "Orban" matches "Orbán", etc.
+  const normalize = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
   const filteredPodcasts = useMemo(() => {
-    if (!debouncedSearch) return podcasts; 
-    
-    const lowerSearch = debouncedSearch.toLowerCase();
+    if (!debouncedSearch) return podcasts;
+
+    const needle = normalize(debouncedSearch);
     return podcasts.filter((p) => {
-      const titleMatch = p.title.toLowerCase().includes(lowerSearch);
-      const authorMatch = p.author?.toLowerCase().includes(lowerSearch) || false;
+      const titleMatch = normalize(p.title).includes(needle);
+      const authorMatch = p.author ? normalize(p.author).includes(needle) : false;
       return titleMatch || authorMatch;
     });
   }, [podcasts, debouncedSearch]);

@@ -1,6 +1,7 @@
 "use client";
 
-import { submitSuggestion } from "./admin/actions"; 
+import Link from "next/link";
+import { submitSuggestion } from "./admin/actions";
 
 export default function Footer() {
   const handleSuggest = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -75,6 +76,11 @@ export default function Footer() {
             </p>
             <p className="font-medium text-gray-400 text-xs">
               Építette és üzemelteti: a csodálatos Nyics Viktor :-)
+            </p>
+            <p className="text-xs">
+              <Link href="/gyik" className="text-blue-400 hover:text-blue-500 transition-colors">
+                GYIK – Gyakran ismételt kérdések
+              </Link>
             </p>
           </div>
 

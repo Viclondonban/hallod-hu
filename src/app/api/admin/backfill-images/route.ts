@@ -20,11 +20,14 @@ async function requireAdmin(): Promise<NextResponse | null> {
       },
     }
   );
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+  // getUser() re-validates the JWT against Supabase servers on every call.
+  // getSession() only reads the cookie and trusts it, which Supabase flags as
+  // insecure for any code path that makes an authorisation decision.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   const allowedEmails = (process.env.ADMIN_EMAILS || '')
     .split(',').map(e => e.trim()).filter(Boolean);
-  if (!allowedEmails.includes(session.user?.email || '')) {
+  if (!allowedEmails.includes(user.email || '')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   return null;
