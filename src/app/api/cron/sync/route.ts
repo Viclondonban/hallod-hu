@@ -66,33 +66,47 @@ async function syncPodcast(podcast: {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-  let response: Response;
+  let xml: string;
+  let newEtag: string | null;
+  let newLastModified: string | null;
+
+  // The timer stays live through the body read so a slow/hung sender can't
+  // pin this task forever once headers arrive. Previously clearTimeout ran
+  // right after fetch() resolved, leaving response.text() without a guard.
   try {
-    response = await fetch(podcast.feedUrl, { headers: reqHeaders, signal: controller.signal });
+    const response = await fetch(podcast.feedUrl, {
+      headers: reqHeaders,
+      signal: controller.signal,
+    });
+
+    // 304 — feed unchanged since last check. No body to read.
+    if (response.status === 304) {
+      const nextCheckHours = await calculateNextCheckHours(podcast.id);
+      const nextCheckAt = new Date(Date.now() + nextCheckHours * 60 * 60 * 1000);
+      await prisma.podcast.update({
+        where: { id: podcast.id },
+        data: { lastCheckedAt: new Date(), nextCheckAt, lastError: null },
+      });
+      return { newEpisodes: 0, nextCheckHours: Math.round(nextCheckHours), skipped: true };
+    }
+
+    if (!response.ok) {
+      // Cancel the body stream so Undici releases the socket immediately.
+      // Without this, the buffered body sits pinned in memory until GC, and
+      // the error-heavy feeds (ECONNRESET, 5xx) were a real contributor to
+      // the Railway RAM drift.
+      await response.body?.cancel().catch(() => {});
+      throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    }
+
+    // Save ETag / Last-Modified so the next check can be conditional.
+    newEtag = response.headers.get('etag');
+    newLastModified = response.headers.get('last-modified');
+    xml = await response.text();
   } finally {
     clearTimeout(timer);
   }
 
-  // 304 — feed unchanged since last check. Just bump lastCheckedAt and move on.
-  if (response.status === 304) {
-    const nextCheckHours = await calculateNextCheckHours(podcast.id);
-    const nextCheckAt = new Date(Date.now() + nextCheckHours * 60 * 60 * 1000);
-    await prisma.podcast.update({
-      where: { id: podcast.id },
-      data: { lastCheckedAt: new Date(), nextCheckAt, lastError: null },
-    });
-    return { newEpisodes: 0, nextCheckHours: Math.round(nextCheckHours), skipped: true };
-  }
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`);
-  }
-
-  // Save ETag / Last-Modified from the response so next check can be conditional.
-  const newEtag = response.headers.get('etag');
-  const newLastModified = response.headers.get('last-modified');
-
-  const xml = await response.text();
   const feed = await parser.parseString(xml);
   let newEpisodes = 0;
 
