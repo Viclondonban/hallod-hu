@@ -32,6 +32,9 @@ export async function generateMetadata(
   const { slug } = await params;
   const { ep } = await searchParams;
 
+  // Short-circuit bot probes before they hit the database
+  if (!SLUG_PATTERN.test(slug)) return {};
+
   const podcast = await prisma.podcast.findUnique({ where: { slug } });
   if (!podcast) return {};
 
@@ -119,7 +122,11 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
   // Grab the slug from the URL (e.g. "viclondonban")
   const { slug } = await params;
 
-  console.log(`Fetching details for podcast slug: ${slug}...`);
+  // Short-circuit bot probes (robots.txt, meta.json, wp-login.php, …) before
+  // they hit Prisma. Saves a DB round-trip per probe and avoids log noise.
+  if (!SLUG_PATTERN.test(slug)) {
+    notFound();
+  }
 
   // 1. Fetch the Podcast details using the SLUG
   const podcast = await prisma.podcast.findUnique({
@@ -128,7 +135,7 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
 
   // If the podcast doesn't exist, instantly trigger a 404 page so other routes work normally
   if (!podcast) {
-    notFound(); 
+    notFound();
   }
 
   // 2. Fetch first 20 episodes + total count in parallel
@@ -155,8 +162,6 @@ export default async function PodcastDetailPage({ params }: { params: Promise<{ 
     ...ep,
     pubDate: ep.pubDate.toISOString(),
   }));
-
-  console.log(`Loaded ${initialEpisodes.length} of ${totalCount} episodes for ${podcast.title}.`);
 
   return (
     <main className="min-h-screen bg-gray-100">
