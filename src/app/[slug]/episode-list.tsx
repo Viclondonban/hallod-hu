@@ -6,6 +6,7 @@ import EpisodePlayer from './episode-player';
 import ShareButton from './share-button';
 import { fetchMoreEpisodes, type SerializedEpisode } from './actions';
 import { usePlayer } from '@/context/player-context';
+import { shouldSkipImageOptimization } from '@/lib/image';
 
 interface Podcast {
   title: string;
@@ -39,6 +40,7 @@ function EpisodeThumbnail({ src, alt }: { src: string | null; alt: string }) {
           height={112}
           className="w-full h-full object-cover"
           sizes="112px"
+          unoptimized={shouldSkipImageOptimization(src)}
           onError={() => setBroken(true)}
         />
       ) : fallback}
