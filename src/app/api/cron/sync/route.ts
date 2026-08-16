@@ -26,6 +26,11 @@ const MAX_ITEMS_PER_FEED = 20;
 const MIN_CHECK_HOURS = 0.5;
 const MAX_CHECK_HOURS = 2;
 
+// After this many consecutive sync failures, a podcast is auto-flipped to
+// isActive=false so we stop wasting cron cycles on permanently-dead feeds.
+// Admin can re-enable manually once the publisher fixes their feed.
+const MAX_CONSECUTIVE_FAILURES = 5;
+
 async function calculateNextCheckHours(podcastId: string): Promise<number> {
   const recentEpisodes = await prisma.episode.findMany({
     where: { podcastId },
@@ -85,7 +90,13 @@ async function syncPodcast(podcast: {
       const nextCheckAt = new Date(Date.now() + nextCheckHours * 60 * 60 * 1000);
       await prisma.podcast.update({
         where: { id: podcast.id },
-        data: { lastCheckedAt: new Date(), nextCheckAt, lastError: null },
+        data: {
+          lastCheckedAt: new Date(),
+          nextCheckAt,
+          lastError: null,
+          lastErrorAt: null,
+          consecutiveFailures: 0,
+        },
       });
       return { newEpisodes: 0, nextCheckHours: Math.round(nextCheckHours), skipped: true };
     }
@@ -165,6 +176,8 @@ async function syncPodcast(podcast: {
       lastCheckedAt: new Date(),
       nextCheckAt,
       lastError: null,
+      lastErrorAt: null,
+      consecutiveFailures: 0,
       // Store validators for the next conditional request
       ...(newEtag !== null && { feedEtag: newEtag }),
       ...(newLastModified !== null && { feedLastModified: newLastModified }),
@@ -196,6 +209,7 @@ export async function GET(req: NextRequest) {
       nextCheckHours?: number;
       skipped?: boolean;
       error?: string;
+      autoDisabled?: boolean;
     }[] = [];
 
     for (let i = 0; i < podcasts.length; i += CONCURRENCY) {
@@ -220,12 +234,40 @@ export async function GET(req: NextRequest) {
               : String(result.reason);
             console.error(`Error syncing ${podcast.title}:`, result.reason);
 
+            // Read current failure count, increment, and auto-disable if we've
+            // hit the threshold. Done as read-then-update rather than an atomic
+            // increment so we can compute the new value for the isActive check.
+            const current = await prisma.podcast.findUnique({
+              where: { id: podcast.id },
+              select: { consecutiveFailures: true },
+            }).catch(() => null);
+
+            const newFailureCount = (current?.consecutiveFailures ?? 0) + 1;
+            const shouldDisable = newFailureCount >= MAX_CONSECUTIVE_FAILURES;
+
+            if (shouldDisable) {
+              console.warn(
+                `[cron] Auto-disabling ${podcast.title} after ${newFailureCount} consecutive failures. Last error: ${errorMsg}`
+              );
+            }
+
             await prisma.podcast.update({
               where: { id: podcast.id },
-              data: { lastError: errorMsg, nextCheckAt: new Date(Date.now() + 6 * 60 * 60 * 1000) },
+              data: {
+                lastError: errorMsg,
+                lastErrorAt: new Date(),
+                consecutiveFailures: newFailureCount,
+                nextCheckAt: new Date(Date.now() + 6 * 60 * 60 * 1000),
+                ...(shouldDisable && { isActive: false }),
+              },
             }).catch(() => {});
 
-            results.push({ title: podcast.title, newEpisodes: 0, error: errorMsg });
+            results.push({
+              title: podcast.title,
+              newEpisodes: 0,
+              error: errorMsg,
+              ...(shouldDisable && { autoDisabled: true }),
+            });
           }
         })
       );
