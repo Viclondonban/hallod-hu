@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { usePlayer } from '@/context/player-context';
+import { shouldSkipImageOptimization } from '@/lib/image';
 
 function formatTime(s: number): string {
   if (!isFinite(s) || s < 0) return '0:00';
@@ -79,6 +80,7 @@ function CoverArt({ coverUrl, title, broken, onBroken, size }: {
           width={size === 'sm' ? 48 : 256}
           height={size === 'sm' ? 48 : 256}
           className="w-full h-full object-cover"
+          unoptimized={shouldSkipImageOptimization(coverUrl)}
           onError={onBroken}
         />
       ) : (

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { shouldSkipImageOptimization } from '@/lib/image';
 
 interface Props {
   src: string;
@@ -29,6 +30,7 @@ export default function PodcastCover({ src, alt }: Props) {
       sizes="(max-width: 768px) 100vw, 288px"
       className="object-cover"
       priority
+      unoptimized={shouldSkipImageOptimization(src)}
       onError={() => setBroken(true)}
     />
   );

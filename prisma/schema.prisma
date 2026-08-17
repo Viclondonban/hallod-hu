@@ -22,6 +22,8 @@ model Podcast {
   lastCheckedAt  DateTime  @default(now())
   category       String?   @default("Egyéb")
   lastError      String?
+  lastErrorAt    DateTime?
+  consecutiveFailures Int  @default(0)
   slug           String?   @unique
   bannerImageUrl String?
   isActive       Boolean   @default(true)
